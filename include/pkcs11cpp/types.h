@@ -48,7 +48,8 @@ using CK_MECHANISM_TYPE_PTR = CK_MECHANISM_TYPE*;
 inline constexpr CK_BBOOL CK_TRUE = 1;
 inline constexpr CK_BBOOL CK_FALSE = 0;
 inline constexpr CK_OBJECT_HANDLE CK_INVALID_HANDLE = 0;
-inline constexpr CK_ULONG CK_UNAVAILABLE_INFORMATION = static_cast<CK_ULONG>(-1);
+inline constexpr CK_ULONG CK_UNAVAILABLE_INFORMATION =
+    static_cast<CK_ULONG>(-1);
 
 // --- Return codes (CKR_*) ---------------------------------------------------
 inline constexpr CK_RV CKR_OK = 0x00000000;
@@ -146,90 +147,90 @@ inline constexpr CK_ULONG CK_SP800_108_DKM_LENGTH_SL_METHOD = 0x00000001;
 
 // --- Structures --------------------------------------------------------------
 struct CK_ATTRIBUTE {
-    CK_ATTRIBUTE_TYPE type;
-    CK_VOID_PTR pValue;
-    CK_ULONG ulValueLen;
+  CK_ATTRIBUTE_TYPE type;
+  CK_VOID_PTR pValue;
+  CK_ULONG ulValueLen;
 };
 using CK_ATTRIBUTE_PTR = CK_ATTRIBUTE*;
 
 struct CK_MECHANISM {
-    CK_MECHANISM_TYPE mechanism;
-    CK_VOID_PTR pParameter;
-    CK_ULONG ulParameterLen;
+  CK_MECHANISM_TYPE mechanism;
+  CK_VOID_PTR pParameter;
+  CK_ULONG ulParameterLen;
 };
 using CK_MECHANISM_PTR = CK_MECHANISM*;
 
 struct CK_MECHANISM_INFO {
-    CK_ULONG ulMinKeySize;
-    CK_ULONG ulMaxKeySize;
-    CK_FLAGS flags;
+  CK_ULONG ulMinKeySize;
+  CK_ULONG ulMaxKeySize;
+  CK_FLAGS flags;
 };
 using CK_MECHANISM_INFO_PTR = CK_MECHANISM_INFO*;
 
 struct CK_SLOT_INFO {
-    char slotDescription[64];
-    CK_FLAGS flags;
+  char slotDescription[64];
+  CK_FLAGS flags;
 };
 
 struct CK_TOKEN_INFO {
-    char label[32];
-    CK_FLAGS flags;
-    CK_ULONG ulFreePrivateMemory;
-    CK_ULONG ulFreePublicMemory;
+  char label[32];
+  CK_FLAGS flags;
+  CK_ULONG ulFreePrivateMemory;
+  CK_ULONG ulFreePublicMemory;
 };
 
 struct CK_ECDH1_DERIVE_PARAMS {
-    CK_ULONG kdf;
-    CK_ULONG ulSharedDataLen;
-    CK_BYTE_PTR pSharedData;
-    CK_ULONG ulPublicDataLen;
-    CK_BYTE_PTR pPublicData;
+  CK_ULONG kdf;
+  CK_ULONG ulSharedDataLen;
+  CK_BYTE_PTR pSharedData;
+  CK_ULONG ulPublicDataLen;
+  CK_BYTE_PTR pPublicData;
 };
 
 struct CK_GCM_PARAMS {
-    CK_BYTE_PTR pIv;
-    CK_ULONG ulIvLen;
-    CK_ULONG ulAADLen;
-    CK_ULONG ulTagBits;
+  CK_BYTE_PTR pIv;
+  CK_ULONG ulIvLen;
+  CK_ULONG ulAADLen;
+  CK_ULONG ulTagBits;
 };
 
 struct CK_RSA_PKCS_OAEP_PARAMS {
-    CK_MECHANISM_TYPE hashAlg;
-    CK_ULONG mgf;
-    CK_ULONG source;
-    CK_VOID_PTR pSourceData;
-    CK_ULONG ulSourceDataLen;
+  CK_MECHANISM_TYPE hashAlg;
+  CK_ULONG mgf;
+  CK_ULONG source;
+  CK_VOID_PTR pSourceData;
+  CK_ULONG ulSourceDataLen;
 };
 
 struct CK_PKCS5_PBKD2_PARAMS {
-    CK_ULONG saltSource;
-    CK_BYTE_PTR pSaltSourceData;
-    CK_ULONG ulSaltSourceDataLen;
-    CK_ULONG iterations;
-    CK_MECHANISM_TYPE prf;
-    CK_VOID_PTR pPrfData;
-    CK_ULONG ulPrfDataLen;
-    CK_UTF8CHAR_PTR pPassword;
-    CK_ULONG ulPasswordLen;
+  CK_ULONG saltSource;
+  CK_BYTE_PTR pSaltSourceData;
+  CK_ULONG ulSaltSourceDataLen;
+  CK_ULONG iterations;
+  CK_MECHANISM_TYPE prf;
+  CK_VOID_PTR pPrfData;
+  CK_ULONG ulPrfDataLen;
+  CK_UTF8CHAR_PTR pPassword;
+  CK_ULONG ulPasswordLen;
 };
 
 struct CK_SP800_108_COUNTER_FORMAT {
-    CK_BBOOL bLittleEndian;
-    CK_ULONG ulWidthInBits;
+  CK_BBOOL bLittleEndian;
+  CK_ULONG ulWidthInBits;
 };
 
 struct CK_SP800_108_DKM_LENGTH_FORMAT {
-    CK_ULONG dkmLengthMethod;
-    CK_BBOOL bLittleEndian;
-    CK_ULONG ulWidthInBits;
+  CK_ULONG dkmLengthMethod;
+  CK_BBOOL bLittleEndian;
+  CK_ULONG ulWidthInBits;
 };
 
 struct CK_SP800_108_KDF_PARAMS {
-    CK_MECHANISM_TYPE macType;
-    CK_ULONG ulNumberOfDataParams;
-    CK_VOID_PTR pDataParams;
-    CK_ULONG ulAdditionalDerivedKeys;
-    CK_VOID_PTR pAdditionalDerivedKeys;
+  CK_MECHANISM_TYPE macType;
+  CK_ULONG ulNumberOfDataParams;
+  CK_VOID_PTR pDataParams;
+  CK_ULONG ulAdditionalDerivedKeys;
+  CK_VOID_PTR pAdditionalDerivedKeys;
 };
 
 // --- Function-table (C_FUNCTION_LIST) ---------------------------------------
@@ -240,43 +241,55 @@ struct CK_SP800_108_KDF_PARAMS {
 using CK_NOTIFY = CK_RV (*)(CK_SESSION_HANDLE, CK_NOTIFICATION, CK_VOID_PTR);
 
 struct CK_FUNCTION_LIST {
-    CK_RV (*C_Initialize)(CK_VOID_PTR);
-    CK_RV (*C_OpenSession)(CK_SLOT_ID, CK_FLAGS, CK_VOID_PTR, CK_NOTIFY, CK_SESSION_HANDLE_PTR);
-    CK_RV (*C_CloseSession)(CK_SESSION_HANDLE);
-    CK_RV (*C_Login)(CK_SESSION_HANDLE, CK_USER_TYPE, CK_UTF8CHAR_PTR, CK_ULONG);
-    CK_RV (*C_GenerateRandom)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG);
-    CK_RV (*C_GenerateKey)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR);
-    CK_RV (*C_GenerateKeyPair)(CK_SESSION_HANDLE, CK_MECHANISM_PTR,
-                                CK_ATTRIBUTE_PTR, CK_ULONG,
-                                CK_ATTRIBUTE_PTR, CK_ULONG,
-                                CK_OBJECT_HANDLE_PTR, CK_OBJECT_HANDLE_PTR);
-    CK_RV (*C_DeriveKey)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE,
-                          CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR);
-    CK_RV (*C_WrapKey)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE,
-                        CK_BYTE_PTR, CK_ULONG_PTR);
-    CK_RV (*C_UnwrapKey)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE,
-                          CK_BYTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR);
-    CK_RV (*C_SignInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE);
-    CK_RV (*C_Sign)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-    CK_RV (*C_VerifyInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE);
-    CK_RV (*C_Verify)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG);
-    CK_RV (*C_EncryptInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE);
-    CK_RV (*C_Encrypt)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-    CK_RV (*C_DecryptInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE);
-    CK_RV (*C_Decrypt)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-    CK_RV (*C_DigestInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR);
-    CK_RV (*C_Digest)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-    CK_RV (*C_GetAttributeValue)(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, CK_ATTRIBUTE_PTR, CK_ULONG);
-    CK_RV (*C_SetAttributeValue)(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, CK_ATTRIBUTE_PTR, CK_ULONG);
-    CK_RV (*C_FindObjectsInit)(CK_SESSION_HANDLE, CK_ATTRIBUTE_PTR, CK_ULONG);
-    CK_RV (*C_FindObjects)(CK_SESSION_HANDLE, CK_OBJECT_HANDLE_PTR, CK_ULONG, CK_ULONG_PTR);
-    CK_RV (*C_FindObjectsFinal)(CK_SESSION_HANDLE);
-    CK_RV (*C_DestroyObject)(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
-    CK_RV (*C_GetSlotList)(CK_BBOOL, CK_ULONG*, CK_ULONG_PTR);
-    CK_RV (*C_GetSlotInfo)(CK_SLOT_ID, CK_SLOT_INFO*);
-    CK_RV (*C_GetTokenInfo)(CK_SLOT_ID, CK_TOKEN_INFO*);
-    CK_RV (*C_GetMechanismList)(CK_SLOT_ID, CK_MECHANISM_TYPE_PTR, CK_ULONG_PTR);
-    CK_RV (*C_GetMechanismInfo)(CK_SLOT_ID, CK_MECHANISM_TYPE, CK_MECHANISM_INFO_PTR);
+  CK_RV (*C_Initialize)(CK_VOID_PTR);
+  CK_RV (*C_OpenSession)(CK_SLOT_ID, CK_FLAGS, CK_VOID_PTR, CK_NOTIFY,
+                         CK_SESSION_HANDLE_PTR);
+  CK_RV (*C_CloseSession)(CK_SESSION_HANDLE);
+  CK_RV (*C_Login)(CK_SESSION_HANDLE, CK_USER_TYPE, CK_UTF8CHAR_PTR, CK_ULONG);
+  CK_RV (*C_GenerateRandom)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG);
+  CK_RV (*C_GenerateKey)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR,
+                         CK_ULONG, CK_OBJECT_HANDLE_PTR);
+  CK_RV (*C_GenerateKeyPair)(CK_SESSION_HANDLE, CK_MECHANISM_PTR,
+                             CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR,
+                             CK_ULONG, CK_OBJECT_HANDLE_PTR,
+                             CK_OBJECT_HANDLE_PTR);
+  CK_RV (*C_DeriveKey)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE,
+                       CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR);
+  CK_RV (*C_WrapKey)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE,
+                     CK_OBJECT_HANDLE, CK_BYTE_PTR, CK_ULONG_PTR);
+  CK_RV (*C_UnwrapKey)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE,
+                       CK_BYTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG,
+                       CK_OBJECT_HANDLE_PTR);
+  CK_RV (*C_SignInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE);
+  CK_RV (*C_Sign)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR,
+                  CK_ULONG_PTR);
+  CK_RV (*C_VerifyInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE);
+  CK_RV (*C_Verify)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR,
+                    CK_ULONG);
+  CK_RV (*C_EncryptInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE);
+  CK_RV (*C_Encrypt)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR,
+                     CK_ULONG_PTR);
+  CK_RV (*C_DecryptInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE);
+  CK_RV (*C_Decrypt)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR,
+                     CK_ULONG_PTR);
+  CK_RV (*C_DigestInit)(CK_SESSION_HANDLE, CK_MECHANISM_PTR);
+  CK_RV (*C_Digest)(CK_SESSION_HANDLE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR,
+                    CK_ULONG_PTR);
+  CK_RV (*C_GetAttributeValue)(CK_SESSION_HANDLE, CK_OBJECT_HANDLE,
+                               CK_ATTRIBUTE_PTR, CK_ULONG);
+  CK_RV (*C_SetAttributeValue)(CK_SESSION_HANDLE, CK_OBJECT_HANDLE,
+                               CK_ATTRIBUTE_PTR, CK_ULONG);
+  CK_RV (*C_FindObjectsInit)(CK_SESSION_HANDLE, CK_ATTRIBUTE_PTR, CK_ULONG);
+  CK_RV (*C_FindObjects)(CK_SESSION_HANDLE, CK_OBJECT_HANDLE_PTR, CK_ULONG,
+                         CK_ULONG_PTR);
+  CK_RV (*C_FindObjectsFinal)(CK_SESSION_HANDLE);
+  CK_RV (*C_DestroyObject)(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+  CK_RV (*C_GetSlotList)(CK_BBOOL, CK_ULONG*, CK_ULONG_PTR);
+  CK_RV (*C_GetSlotInfo)(CK_SLOT_ID, CK_SLOT_INFO*);
+  CK_RV (*C_GetTokenInfo)(CK_SLOT_ID, CK_TOKEN_INFO*);
+  CK_RV (*C_GetMechanismList)(CK_SLOT_ID, CK_MECHANISM_TYPE_PTR, CK_ULONG_PTR);
+  CK_RV (*C_GetMechanismInfo)(CK_SLOT_ID, CK_MECHANISM_TYPE,
+                              CK_MECHANISM_INFO_PTR);
 };
 using CK_FUNCTION_LIST_PTR = CK_FUNCTION_LIST*;
 using CK_C_GetFunctionList = CK_RV (*)(CK_FUNCTION_LIST_PTR*);

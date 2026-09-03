@@ -27,17 +27,17 @@ using namespace pkcs11cpp;
 
 namespace {
 
-void printHeader(const std::string& title) {
+void PrintHeader(const std::string& title) {
     std::cout << "\n=== " << title << " ===\n";
 }
 
-std::string toHex(const std::vector<CK_BYTE>& bytes, std::size_t maxBytes = 16) {
+std::string ToHex(const std::vector<CK_BYTE>& bytes, std::size_t max_bytes = 16) {
     std::ostringstream oss;
     oss << std::hex << std::setfill('0');
-    for (std::size_t i = 0; i < std::min(bytes.size(), maxBytes); ++i) {
+    for (std::size_t i = 0; i < std::min(bytes.size(), max_bytes); ++i) {
         oss << std::setw(2) << static_cast<int>(bytes[i]);
     }
-    if (bytes.size() > maxBytes) oss << "...";
+    if (bytes.size() > max_bytes) oss << "...";
     return oss.str();
 }
 
@@ -46,107 +46,107 @@ std::string toHex(const std::vector<CK_BYTE>& bytes, std::size_t maxBytes = 16) 
 int main() {
     // Swap this block for `SessionManager sm("/path/to/vendor-pkcs11.so", slotId, pin);`
     // to run the identical demo against a real token.
-    mock::reset();
-    SessionManager sessions(mock::getFunctionList(), /*slot=*/0, /*pin=*/"1234");
-    auto guard = sessions.createSessionGuard();
-    CK_SESSION_HANDLE session = guard.handle();
-    CK_FUNCTION_LIST_PTR functions = guard.functions();
+    mock::Reset();
+    SessionManager sessions(mock::GetFunctionList(), /*slot=*/0, /*pin=*/"1234");
+    auto guard = sessions.CreateSessionGuard();
+    CK_SESSION_HANDLE session = guard.Handle();
+    CK_FUNCTION_LIST_PTR functions = guard.Functions();
 
-    printHeader("Mechanism discovery");
+    PrintHeader("Mechanism discovery");
     MechanismManager mechanisms;
-    mechanisms.discoverMechanisms(functions, /*slotId=*/0);
-    if (auto best = mechanisms.selectBestMechanism(0, "encrypt", CKK_AES, 256)) {
+    mechanisms.DiscoverMechanisms(functions, /*slotId=*/0);
+    if (auto best = mechanisms.SelectBestMechanism(0, "encrypt", CKK_AES, 256)) {
         std::cout << "Best AES-256 encrypt mechanism: 0x" << std::hex << *best << std::dec << "\n";
     }
 
-    printHeader("Key generation");
-    KeyManager keyManager;
-    KeyManager::KeyGenerationParams aesParams;
-    aesParams.algorithm = KeyManager::KeyAlgorithm::AES_256;
-    aesParams.label = "demo-aes-key";
-    aesParams.canEncrypt = aesParams.canDecrypt = aesParams.canWrap = aesParams.canUnwrap = true;
-    CK_OBJECT_HANDLE aesKey = keyManager.generateSecretKey(session, functions, aesParams);
-    std::cout << "Generated AES-256 key, handle=" << aesKey << "\n";
+    PrintHeader("Key generation");
+    KeyManager key_manager;
+    KeyManager::KeyGenerationParams aes_params;
+    aes_params.algorithm_ = KeyManager::KeyAlgorithm::kAes256;
+    aes_params.label_ = "demo-aes-key";
+    aes_params.can_encrypt_ = aes_params.can_decrypt_ = aes_params.can_wrap_ = aes_params.can_unwrap_ = true;
+    CK_OBJECT_HANDLE aes_key = key_manager.GenerateSecretKey(session, functions, aes_params);
+    std::cout << "Generated AES-256 key, handle=" << aes_key << "\n";
 
-    KeyManager::KeyGenerationParams rsaParams;
-    rsaParams.algorithm = KeyManager::KeyAlgorithm::RSA_2048;
-    rsaParams.label = "demo-rsa-signing-key";
-    rsaParams.canSign = rsaParams.canVerify = true;
-    auto rsaPair = keyManager.generateKeyPair(session, functions, rsaParams);
-    std::cout << "Generated RSA-2048 key pair, public=" << rsaPair.publicKey
-              << " private=" << rsaPair.privateKey << "\n";
+    KeyManager::KeyGenerationParams rsa_params;
+    rsa_params.algorithm_ = KeyManager::KeyAlgorithm::kRsa2048;
+    rsa_params.label_ = "demo-rsa-signing-key";
+    rsa_params.can_sign_ = rsa_params.can_verify_ = true;
+    auto rsa_pair = key_manager.GenerateKeyPair(session, functions, rsa_params);
+    std::cout << "Generated RSA-2048 key pair, public=" << rsa_pair.public_key_
+              << " private=" << rsa_pair.private_key_ << "\n";
 
-    printHeader("Attribute introspection");
+    PrintHeader("Attribute introspection");
     AttributeManager attrs;
-    auto readBack = attrs.readObjectAttributes(session, functions, aesKey);
-    std::cout << "AES key has " << readBack.size() << " readable attributes:\n";
-    for (std::size_t i = 0; i < readBack.size(); ++i) {
-        std::cout << "  " << AttributeManager::describeAttribute(readBack.data()[i].type) << "\n";
+    auto read_back = attrs.ReadObjectAttributes(session, functions, aes_key);
+    std::cout << "AES key has " << read_back.Size() << " readable attributes:\n";
+    for (std::size_t i = 0; i < read_back.Size(); ++i) {
+        std::cout << "  " << AttributeManager::DescribeAttribute(read_back.Data()[i].type) << "\n";
     }
 
-    printHeader("Sign + verify (batched via CryptoProcessor)");
+    PrintHeader("Sign + verify (batched via CryptoProcessor)");
     CryptoProcessor processor(session, functions, /*threadCount=*/2);
-    processor.start();
+    processor.Start();
 
     std::vector<CK_BYTE> message = {'h', 'e', 'l', 'l', 'o', ' ', 'p', 'k', 'c', 's', '1', '1'};
-    auto signIds = processor.submitSigningBatch({message}, rsaPair.privateKey, CKM_SHA256_RSA_PKCS);
+    auto sign_ids = processor.SubmitSigningBatch({message}, rsa_pair.private_key_, CKM_SHA256_RSA_PKCS);
 
     // A tiny synchronous wait loop -- fine for a demo; a real application
     // would use onComplete callbacks instead of polling.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    processor.stop();
-    std::cout << "Submitted " << signIds.size() << " signing operation(s): " << signIds.front() << "\n";
+    processor.Stop();
+    std::cout << "Submitted " << sign_ids.size() << " signing operation(s): " << sign_ids.front() << "\n";
 
-    printHeader("Encrypt / decrypt round-trip");
-    CK_MECHANISM encMech = {CKM_AES_ECB, nullptr, 0};
-    functions->C_EncryptInit(session, &encMech, aesKey);
-    CK_ULONG encLen = 0;
-    functions->C_Encrypt(session, message.data(), static_cast<CK_ULONG>(message.size()), nullptr, &encLen);
-    std::vector<CK_BYTE> ciphertext(encLen);
-    functions->C_Encrypt(session, message.data(), static_cast<CK_ULONG>(message.size()), ciphertext.data(), &encLen);
-    std::cout << "Ciphertext: " << toHex(ciphertext) << "\n";
+    PrintHeader("Encrypt / decrypt round-trip");
+    CK_MECHANISM enc_mech = {CKM_AES_ECB, nullptr, 0};
+    functions->C_EncryptInit(session, &enc_mech, aes_key);
+    CK_ULONG enc_len = 0;
+    functions->C_Encrypt(session, message.data(), static_cast<CK_ULONG>(message.size()), nullptr, &enc_len);
+    std::vector<CK_BYTE> ciphertext(enc_len);
+    functions->C_Encrypt(session, message.data(), static_cast<CK_ULONG>(message.size()), ciphertext.data(), &enc_len);
+    std::cout << "Ciphertext: " << ToHex(ciphertext) << "\n";
 
-    functions->C_DecryptInit(session, &encMech, aesKey);
-    CK_ULONG decLen = static_cast<CK_ULONG>(message.size());
-    std::vector<CK_BYTE> plaintext(decLen);
-    functions->C_Decrypt(session, ciphertext.data(), encLen, plaintext.data(), &decLen);
-    plaintext.resize(decLen);
+    functions->C_DecryptInit(session, &enc_mech, aes_key);
+    CK_ULONG dec_len = static_cast<CK_ULONG>(message.size());
+    std::vector<CK_BYTE> plaintext(dec_len);
+    functions->C_Decrypt(session, ciphertext.data(), enc_len, plaintext.data(), &dec_len);
+    plaintext.resize(dec_len);
     std::cout << "Decrypted:  " << std::string(plaintext.begin(), plaintext.end())
               << (plaintext == message ? "  (matches original)" : "  (MISMATCH!)") << "\n";
 
-    printHeader("Key wrap / unwrap");
+    PrintHeader("Key wrap / unwrap");
     KeyTransport transport;
-    KeyManager::KeyGenerationParams wrappingParams;
-    wrappingParams.algorithm = KeyManager::KeyAlgorithm::AES_256;
-    wrappingParams.label = "demo-wrapping-key";
-    wrappingParams.canWrap = wrappingParams.canUnwrap = true;
-    CK_OBJECT_HANDLE wrappingKey = keyManager.generateSecretKey(session, functions, wrappingParams);
+    KeyManager::KeyGenerationParams wrapping_params;
+    wrapping_params.algorithm_ = KeyManager::KeyAlgorithm::kAes256;
+    wrapping_params.label_ = "demo-wrapping-key";
+    wrapping_params.can_wrap_ = wrapping_params.can_unwrap_ = true;
+    CK_OBJECT_HANDLE wrapping_key = key_manager.GenerateSecretKey(session, functions, wrapping_params);
 
-    auto wrapped = transport.wrapKey(session, functions, aesKey, wrappingKey, KeyTransport::WrapMechanism::AesKeyWrap);
-    std::cout << "Wrapped key (" << wrapped.wrappedKey.size() << " bytes): " << toHex(wrapped.wrappedKey) << "\n";
-    CK_OBJECT_HANDLE unwrapped = transport.unwrapKey(session, functions, wrapped, wrappingKey, "demo-aes-key-restored");
+    auto wrapped = transport.WrapKey(session, functions, aes_key, wrapping_key, KeyTransport::WrapMechanism::kAesKeyWrap);
+    std::cout << "Wrapped key (" << wrapped.wrapped_key_.size() << " bytes): " << ToHex(wrapped.wrapped_key_) << "\n";
+    CK_OBJECT_HANDLE unwrapped = transport.UnwrapKey(session, functions, wrapped, wrapping_key, "demo-aes-key-restored");
     std::cout << "Unwrapped into new object, handle=" << unwrapped << "\n";
 
-    printHeader("Key derivation (SP800-108 counter KDF)");
+    PrintHeader("Key derivation (SP800-108 counter KDF)");
     KeyDerivation derivation;
-    KeyDerivation::DerivationParams kdfParams;
-    kdfParams.kdfType = KeyDerivation::KdfType::Sp800_108CounterKdf;
-    kdfParams.baseKey = aesKey;
-    kdfParams.label = {'s', 'e', 's', 's', 'i', 'o', 'n'};
-    kdfParams.derivedKeyLabel = "demo-derived-key";
-    kdfParams.derivedKeyLengthBytes = 16;
-    CK_OBJECT_HANDLE derivedKey = derivation.deriveSp800_108Key(session, functions, kdfParams);
-    std::cout << "Derived key handle=" << derivedKey << "\n";
+    KeyDerivation::DerivationParams kdf_params;
+    kdf_params.kdf_type_ = KeyDerivation::KdfType::kSp800108CounterKdf;
+    kdf_params.base_key_ = aes_key;
+    kdf_params.label_ = {'s', 'e', 's', 's', 'i', 'o', 'n'};
+    kdf_params.derived_key_label_ = "demo-derived-key";
+    kdf_params.derived_key_length_bytes_ = 16;
+    CK_OBJECT_HANDLE derived_key = derivation.DeriveSp800108Key(session, functions, kdf_params);
+    std::cout << "Derived key handle=" << derived_key << "\n";
 
-    printHeader("Object search");
+    PrintHeader("Object search");
     ObjectFinder finder;
-    auto matches = finder.findObjects(session, functions,
-                                       ObjectFinder::SearchCriteria().withLabel("demo-aes-key"));
+    auto matches = finder.FindObjects(session, functions,
+                                       ObjectFinder::SearchCriteria().WithLabel("demo-aes-key"));
     std::cout << "Found " << matches.size() << " object(s) labeled \"demo-aes-key\"\n";
 
-    printHeader("Health monitor");
+    PrintHeader("Health monitor");
     HealthMonitor health;
-    bool passed = health.performComprehensiveTest(functions, /*slotId=*/0, "1234");
+    bool passed = health.PerformComprehensiveTest(functions, /*slotId=*/0, "1234");
     std::cout << "Comprehensive token self-test: " << (passed ? "PASS" : "FAIL") << "\n";
 
     std::cout << "\nAll steps completed.\n";

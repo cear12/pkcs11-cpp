@@ -22,12 +22,12 @@ public:
     // Loads a real PKCS#11 module from disk (a vendor's .so/.dll) via
     // dlopen/C_GetFunctionList. Linux/macOS only as written; on Windows,
     // swap dlopen/dlsym for LoadLibrary/GetProcAddress.
-    SessionManager(const std::string& libraryPath, CK_SLOT_ID slot, std::string userPin = "");
+    SessionManager(const std::string& library_path, CK_SLOT_ID slot, std::string user_pin = "");
 
     // Attaches to an already-obtained function list -- the constructor
-    // used with pkcs11cpp::mock::getFunctionList() in tests and the demo,
+    // used with pkcs11cpp::mock::GetFunctionList() in tests and the demo,
     // or with any function list obtained by the caller's own means.
-    SessionManager(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slot, std::string userPin = "");
+    SessionManager(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slot, std::string user_pin = "");
 
     ~SessionManager();
 
@@ -40,8 +40,8 @@ public:
     // session + function-list pair for one PKCS#11 call sequence.
     class SessionGuard {
     public:
-        CK_SESSION_HANDLE handle() const { return session_; }
-        CK_FUNCTION_LIST_PTR functions() const { return manager_->functions_; }
+        CK_SESSION_HANDLE Handle() const { return session_; }
+        CK_FUNCTION_LIST_PTR Functions() const { return manager_->functions_; }
 
     private:
         friend class SessionManager;
@@ -52,19 +52,19 @@ public:
         CK_SESSION_HANDLE session_;
     };
 
-    SessionGuard createSessionGuard();
-    CK_FUNCTION_LIST_PTR functions() const { return functions_; }
+    SessionGuard CreateSessionGuard();
+    CK_FUNCTION_LIST_PTR Functions() const { return functions_; }
 
 private:
-    CK_SESSION_HANDLE getOrOpenSession();
+    CK_SESSION_HANDLE GetOrOpenSession();
 
-    void* libraryHandle_ = nullptr;  // non-null only when we dlopen'd it ourselves
+    void* library_handle_ = nullptr;  // non-null only when we dlopen'd it ourselves
     CK_FUNCTION_LIST_PTR functions_ = nullptr;
-    CK_SLOT_ID slotId_;
-    std::string userPin_;
+    CK_SLOT_ID slot_id_;
+    std::string user_pin_;
 
-    mutable std::mutex sessionMutex_;
-    std::unordered_map<std::thread::id, CK_SESSION_HANDLE> threadSessions_;
+    mutable std::mutex session_mutex_;
+    std::unordered_map<std::thread::id, CK_SESSION_HANDLE> thread_sessions_;
 };
 
 }  // namespace pkcs11cpp

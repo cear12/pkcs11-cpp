@@ -25,16 +25,16 @@ namespace pkcs11cpp::mock {
 //
 // Swap this module for a real one (SoftHSM2, a vendor's PKCS#11 driver)
 // by pointing SessionManager at that library's C_GetFunctionList instead
-// of getFunctionList() below -- every class above this layer only depends
+// of GetFunctionList() below -- every class above this layer only depends
 // on the CK_FUNCTION_LIST_PTR interface.
-CK_FUNCTION_LIST_PTR getFunctionList();
+CK_FUNCTION_LIST_PTR GetFunctionList();
 
 // Clears all sessions and objects. Call between test cases so each test
 // starts from a known-empty token.
-void reset();
+void Reset();
 
 // Test hook: makes the next C_GetTokenInfo report low free memory, so
 // HealthMonitor's warning path can be exercised deterministically.
-void simulateLowMemory(bool enabled);
+void SimulateLowMemory(bool enabled);
 
 }  // namespace pkcs11cpp::mock

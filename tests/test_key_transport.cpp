@@ -7,55 +7,55 @@
 using namespace pkcs11cpp;
 
 TEST_CASE("KeyTransport wrap/unwrap round-trips a key's usable attributes", "[key_transport]") {
-    mock::reset();
-    SessionManager sm(mock::getFunctionList(), 0);
-    auto guard = sm.createSessionGuard();
+    mock::Reset();
+    SessionManager sm(mock::GetFunctionList(), 0);
+    auto guard = sm.CreateSessionGuard();
 
     KeyManager km;
-    KeyManager::KeyGenerationParams keyParams;
-    keyParams.algorithm = KeyManager::KeyAlgorithm::AES_128;
-    keyParams.label = "payload-key";
-    keyParams.canEncrypt = keyParams.canDecrypt = true;
-    CK_OBJECT_HANDLE payloadKey = km.generateSecretKey(guard.handle(), guard.functions(), keyParams);
+    KeyManager::KeyGenerationParams key_params;
+    key_params.algorithm_ = KeyManager::KeyAlgorithm::kAes128;
+    key_params.label_ = "payload-key";
+    key_params.can_encrypt_ = key_params.can_decrypt_ = true;
+    CK_OBJECT_HANDLE payload_key = km.GenerateSecretKey(guard.Handle(), guard.Functions(), key_params);
 
-    KeyManager::KeyGenerationParams wrapperParams;
-    wrapperParams.algorithm = KeyManager::KeyAlgorithm::AES_256;
-    wrapperParams.canWrap = wrapperParams.canUnwrap = true;
-    CK_OBJECT_HANDLE wrappingKey = km.generateSecretKey(guard.handle(), guard.functions(), wrapperParams);
+    KeyManager::KeyGenerationParams wrapper_params;
+    wrapper_params.algorithm_ = KeyManager::KeyAlgorithm::kAes256;
+    wrapper_params.can_wrap_ = wrapper_params.can_unwrap_ = true;
+    CK_OBJECT_HANDLE wrapping_key = km.GenerateSecretKey(guard.Handle(), guard.Functions(), wrapper_params);
 
     KeyTransport transport;
-    auto wrapped = transport.wrapKey(guard.handle(), guard.functions(), payloadKey, wrappingKey,
-                                      KeyTransport::WrapMechanism::AesKeyWrap);
-    REQUIRE_FALSE(wrapped.wrappedKey.empty());
+    auto wrapped = transport.WrapKey(guard.Handle(), guard.Functions(), payload_key, wrapping_key,
+                                      KeyTransport::WrapMechanism::kAesKeyWrap);
+    REQUIRE_FALSE(wrapped.wrapped_key_.empty());
 
-    CK_OBJECT_HANDLE restored = transport.unwrapKey(guard.handle(), guard.functions(), wrapped, wrappingKey);
+    CK_OBJECT_HANDLE restored = transport.UnwrapKey(guard.Handle(), guard.Functions(), wrapped, wrapping_key);
     REQUIRE(restored != CK_INVALID_HANDLE);
-    REQUIRE(restored != payloadKey);  // unwrap always produces a fresh object
+    REQUIRE(restored != payload_key);  // unwrap always produces a fresh object
 }
 
-TEST_CASE("KeyTransport::unwrapKey applies a new label when one is given", "[key_transport]") {
-    mock::reset();
-    SessionManager sm(mock::getFunctionList(), 0);
-    auto guard = sm.createSessionGuard();
+TEST_CASE("KeyTransport::UnwrapKey applies a new label when one is given", "[key_transport]") {
+    mock::Reset();
+    SessionManager sm(mock::GetFunctionList(), 0);
+    auto guard = sm.CreateSessionGuard();
 
     KeyManager km;
-    KeyManager::KeyGenerationParams keyParams;
-    keyParams.algorithm = KeyManager::KeyAlgorithm::AES_128;
-    keyParams.label = "original-label";
-    CK_OBJECT_HANDLE payloadKey = km.generateSecretKey(guard.handle(), guard.functions(), keyParams);
+    KeyManager::KeyGenerationParams key_params;
+    key_params.algorithm_ = KeyManager::KeyAlgorithm::kAes128;
+    key_params.label_ = "original-label";
+    CK_OBJECT_HANDLE payload_key = km.GenerateSecretKey(guard.Handle(), guard.Functions(), key_params);
 
-    KeyManager::KeyGenerationParams wrapperParams;
-    wrapperParams.algorithm = KeyManager::KeyAlgorithm::AES_256;
-    CK_OBJECT_HANDLE wrappingKey = km.generateSecretKey(guard.handle(), guard.functions(), wrapperParams);
+    KeyManager::KeyGenerationParams wrapper_params;
+    wrapper_params.algorithm_ = KeyManager::KeyAlgorithm::kAes256;
+    CK_OBJECT_HANDLE wrapping_key = km.GenerateSecretKey(guard.Handle(), guard.Functions(), wrapper_params);
 
     KeyTransport transport;
-    auto wrapped = transport.wrapKey(guard.handle(), guard.functions(), payloadKey, wrappingKey);
+    auto wrapped = transport.WrapKey(guard.Handle(), guard.Functions(), payload_key, wrapping_key);
     CK_OBJECT_HANDLE restored =
-        transport.unwrapKey(guard.handle(), guard.functions(), wrapped, wrappingKey, "renamed-label");
+        transport.UnwrapKey(guard.Handle(), guard.Functions(), wrapped, wrapping_key, "renamed-label");
 
     AttributeManager attrs;
-    auto readBack = attrs.readObjectAttributes(guard.handle(), guard.functions(), restored);
-    auto label = readBack.getAttribute(CKA_LABEL);
+    auto read_back = attrs.ReadObjectAttributes(guard.Handle(), guard.Functions(), restored);
+    auto label = read_back.GetAttribute(CKA_LABEL);
     REQUIRE(label.has_value());
     REQUIRE(std::string(label->begin(), label->end()) == "renamed-label");
 }

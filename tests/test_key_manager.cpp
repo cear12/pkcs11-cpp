@@ -6,58 +6,58 @@
 using namespace pkcs11cpp;
 
 TEST_CASE("KeyManager generates a distinct RSA key pair each call", "[key_manager]") {
-    mock::reset();
-    SessionManager sm(mock::getFunctionList(), 0);
-    auto guard = sm.createSessionGuard();
+    mock::Reset();
+    SessionManager sm(mock::GetFunctionList(), 0);
+    auto guard = sm.CreateSessionGuard();
 
     KeyManager km;
     KeyManager::KeyGenerationParams params;
-    params.algorithm = KeyManager::KeyAlgorithm::RSA_2048;
-    params.label = "rsa-key";
-    params.canSign = params.canVerify = true;
+    params.algorithm_ = KeyManager::KeyAlgorithm::kRsa2048;
+    params.label_ = "rsa-key";
+    params.can_sign_ = params.can_verify_ = true;
 
-    auto pair1 = km.generateKeyPair(guard.handle(), guard.functions(), params);
-    auto pair2 = km.generateKeyPair(guard.handle(), guard.functions(), params);
+    auto pair1 = km.GenerateKeyPair(guard.Handle(), guard.Functions(), params);
+    auto pair2 = km.GenerateKeyPair(guard.Handle(), guard.Functions(), params);
 
-    REQUIRE(pair1.publicKey != pair2.publicKey);
-    REQUIRE(pair1.privateKey != pair2.privateKey);
-    REQUIRE(pair1.publicKey != pair1.privateKey);
+    REQUIRE(pair1.public_key_ != pair2.public_key_);
+    REQUIRE(pair1.private_key_ != pair2.private_key_);
+    REQUIRE(pair1.public_key_ != pair1.private_key_);
 }
 
 TEST_CASE("KeyManager generates AES secret keys of the requested size", "[key_manager]") {
-    mock::reset();
-    SessionManager sm(mock::getFunctionList(), 0);
-    auto guard = sm.createSessionGuard();
+    mock::Reset();
+    SessionManager sm(mock::GetFunctionList(), 0);
+    auto guard = sm.CreateSessionGuard();
 
     KeyManager km;
     KeyManager::KeyGenerationParams params;
-    params.algorithm = KeyManager::KeyAlgorithm::AES_128;
-    params.canEncrypt = true;
+    params.algorithm_ = KeyManager::KeyAlgorithm::kAes128;
+    params.can_encrypt_ = true;
 
-    CK_OBJECT_HANDLE key = km.generateSecretKey(guard.handle(), guard.functions(), params);
+    CK_OBJECT_HANDLE key = km.GenerateSecretKey(guard.Handle(), guard.Functions(), params);
     REQUIRE(key != CK_INVALID_HANDLE);
 }
 
 TEST_CASE("KeyManager rejects mismatched algorithm/operation combinations", "[key_manager]") {
-    mock::reset();
-    SessionManager sm(mock::getFunctionList(), 0);
-    auto guard = sm.createSessionGuard();
+    mock::Reset();
+    SessionManager sm(mock::GetFunctionList(), 0);
+    auto guard = sm.CreateSessionGuard();
     KeyManager km;
 
-    KeyManager::KeyGenerationParams aesParams;
-    aesParams.algorithm = KeyManager::KeyAlgorithm::AES_256;
-    REQUIRE_THROWS_AS(km.generateKeyPair(guard.handle(), guard.functions(), aesParams), std::invalid_argument);
+    KeyManager::KeyGenerationParams aes_params;
+    aes_params.algorithm_ = KeyManager::KeyAlgorithm::kAes256;
+    REQUIRE_THROWS_AS(km.GenerateKeyPair(guard.Handle(), guard.Functions(), aes_params), std::invalid_argument);
 
-    KeyManager::KeyGenerationParams rsaParams;
-    rsaParams.algorithm = KeyManager::KeyAlgorithm::RSA_2048;
-    REQUIRE_THROWS_AS(km.generateSecretKey(guard.handle(), guard.functions(), rsaParams), std::invalid_argument);
+    KeyManager::KeyGenerationParams rsa_params;
+    rsa_params.algorithm_ = KeyManager::KeyAlgorithm::kRsa2048;
+    REQUIRE_THROWS_AS(km.GenerateSecretKey(guard.Handle(), guard.Functions(), rsa_params), std::invalid_argument);
 }
 
-TEST_CASE("isSecretKeyAlgorithm / isKeyPairAlgorithm classify every algorithm consistently", "[key_manager]") {
+TEST_CASE("IsSecretKeyAlgorithm / IsKeyPairAlgorithm classify every algorithm consistently", "[key_manager]") {
     using Alg = KeyManager::KeyAlgorithm;
-    for (auto alg : {Alg::RSA_2048, Alg::RSA_3072, Alg::RSA_4096, Alg::ECDSA_P256, Alg::ECDSA_P384, Alg::ECDSA_P521,
-                      Alg::AES_128, Alg::AES_192, Alg::AES_256, Alg::DES3}) {
+    for (auto alg : {Alg::kRsa2048, Alg::kRsa3072, Alg::kRsa4096, Alg::kEcdsaP256, Alg::kEcdsaP384, Alg::kEcdsaP521,
+                      Alg::kAes128, Alg::kAes192, Alg::kAes256, Alg::kDeS3}) {
         // Every algorithm is exactly one of "key pair" or "secret key", never both, never neither.
-        REQUIRE(KeyManager::isKeyPairAlgorithm(alg) != KeyManager::isSecretKeyAlgorithm(alg));
+        REQUIRE(KeyManager::IsKeyPairAlgorithm(alg) != KeyManager::IsSecretKeyAlgorithm(alg));
     }
 }

@@ -10,103 +10,103 @@
 using namespace pkcs11cpp;
 
 namespace {
-void waitForCompletion(CryptoProcessor::Operation& op, int maxMillis = 500) {
-    for (int i = 0; i < maxMillis && !op.completed; ++i) {
+void WaitForCompletion(CryptoProcessor::Operation& op, int max_millis = 500) {
+    for (int i = 0; i < max_millis && !op.completed_; ++i) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 }  // namespace
 
 TEST_CASE("CryptoProcessor signs and the mock backend can verify it back", "[crypto_processor]") {
-    mock::reset();
-    SessionManager sm(mock::getFunctionList(), 0);
-    auto guard = sm.createSessionGuard();
+    mock::Reset();
+    SessionManager sm(mock::GetFunctionList(), 0);
+    auto guard = sm.CreateSessionGuard();
 
     KeyManager km;
     KeyManager::KeyGenerationParams params;
-    params.algorithm = KeyManager::KeyAlgorithm::RSA_2048;
-    params.canSign = params.canVerify = true;
-    auto pair = km.generateKeyPair(guard.handle(), guard.functions(), params);
+    params.algorithm_ = KeyManager::KeyAlgorithm::kRsa2048;
+    params.can_sign_ = params.can_verify_ = true;
+    auto pair = km.GenerateKeyPair(guard.Handle(), guard.Functions(), params);
 
-    CryptoProcessor processor(guard.handle(), guard.functions(), 2);
-    processor.start();
+    CryptoProcessor processor(guard.Handle(), guard.Functions(), 2);
+    processor.Start();
 
     std::vector<CK_BYTE> message = {'t', 'e', 's', 't'};
     std::atomic<bool> done{false};
     std::vector<CK_BYTE> signature;
 
     auto op = std::make_unique<CryptoProcessor::Operation>();
-    op->type = CryptoProcessor::Operation::Type::Sign;
-    op->keyHandle = pair.privateKey;
-    op->mechanism = {CKM_SHA256_RSA_PKCS, nullptr, 0};
-    op->inputData = message;
-    op->onComplete = [&](const CryptoProcessor::Operation& completed) {
-        signature = completed.outputData;
+    op->type_ = CryptoProcessor::Operation::Type::kSign;
+    op->key_handle_ = pair.private_key_;
+    op->mechanism_ = {CKM_SHA256_RSA_PKCS, nullptr, 0};
+    op->input_data_ = message;
+    op->on_complete_ = [&](const CryptoProcessor::Operation& completed) {
+        signature = completed.output_data_;
         done = true;
     };
-    processor.submit(std::move(op));
+    processor.Submit(std::move(op));
 
     for (int i = 0; i < 500 && !done; ++i) std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    processor.stop();
+    processor.Stop();
 
     REQUIRE(done.load());
     REQUIRE_FALSE(signature.empty());
 
     // Verify directly against the mock (HMAC-based, see mock_module.h).
     CK_MECHANISM mech = {CKM_SHA256_RSA_PKCS, nullptr, 0};
-    guard.functions()->C_VerifyInit(guard.handle(), &mech, pair.privateKey);
-    CK_RV rv = guard.functions()->C_Verify(guard.handle(), message.data(), static_cast<CK_ULONG>(message.size()),
+    guard.Functions()->C_VerifyInit(guard.Handle(), &mech, pair.private_key_);
+    CK_RV rv = guard.Functions()->C_Verify(guard.Handle(), message.data(), static_cast<CK_ULONG>(message.size()),
                                             signature.data(), static_cast<CK_ULONG>(signature.size()));
     REQUIRE(rv == CKR_OK);
 }
 
-TEST_CASE("CryptoProcessor::submitEncryptionBatch produces one operation per input", "[crypto_processor]") {
-    mock::reset();
-    SessionManager sm(mock::getFunctionList(), 0);
-    auto guard = sm.createSessionGuard();
+TEST_CASE("CryptoProcessor::SubmitEncryptionBatch produces one operation per input", "[crypto_processor]") {
+    mock::Reset();
+    SessionManager sm(mock::GetFunctionList(), 0);
+    auto guard = sm.CreateSessionGuard();
 
     KeyManager km;
     KeyManager::KeyGenerationParams params;
-    params.algorithm = KeyManager::KeyAlgorithm::AES_128;
-    params.canEncrypt = true;
-    CK_OBJECT_HANDLE key = km.generateSecretKey(guard.handle(), guard.functions(), params);
+    params.algorithm_ = KeyManager::KeyAlgorithm::kAes128;
+    params.can_encrypt_ = true;
+    CK_OBJECT_HANDLE key = km.GenerateSecretKey(guard.Handle(), guard.Functions(), params);
 
-    CryptoProcessor processor(guard.handle(), guard.functions(), 2);
-    processor.start();
+    CryptoProcessor processor(guard.Handle(), guard.Functions(), 2);
+    processor.Start();
 
     std::vector<std::vector<CK_BYTE>> batch = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
-    auto ids = processor.submitEncryptionBatch(batch, key, CKM_AES_ECB);
+    auto ids = processor.SubmitEncryptionBatch(batch, key, CKM_AES_ECB);
     REQUIRE(ids.size() == batch.size());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    processor.stop();
+    processor.Stop();
 }
 
 TEST_CASE("CryptoProcessor reports CKR_GENERAL_ERROR instead of throwing on a bad key handle",
           "[crypto_processor]") {
-    mock::reset();
-    SessionManager sm(mock::getFunctionList(), 0);
-    auto guard = sm.createSessionGuard();
+    mock::Reset();
+    SessionManager sm(mock::GetFunctionList(), 0);
+    auto guard = sm.CreateSessionGuard();
 
-    CryptoProcessor processor(guard.handle(), guard.functions(), 1);
-    processor.start();
+    CryptoProcessor processor(guard.Handle(), guard.Functions(), 1);
+    processor.Start();
 
     auto op = std::make_unique<CryptoProcessor::Operation>();
-    op->type = CryptoProcessor::Operation::Type::Sign;
-    op->keyHandle = 9999;  // never created
-    op->mechanism = {CKM_SHA256_RSA_PKCS, nullptr, 0};
-    op->inputData = {1, 2, 3};
+    op->type_ = CryptoProcessor::Operation::Type::kSign;
+    op->key_handle_ = 9999;  // never created
+    op->mechanism_ = {CKM_SHA256_RSA_PKCS, nullptr, 0};
+    op->input_data_ = {1, 2, 3};
 
     std::atomic<bool> done{false};
     CK_RV result = CKR_OK;
-    op->onComplete = [&](const CryptoProcessor::Operation& completed) {
-        result = completed.result;
+    op->on_complete_ = [&](const CryptoProcessor::Operation& completed) {
+        result = completed.result_;
         done = true;
     };
-    processor.submit(std::move(op));
+    processor.Submit(std::move(op));
 
     for (int i = 0; i < 500 && !done; ++i) std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    processor.stop();
+    processor.Stop();
 
     REQUIRE(done.load());
     // The mock's Sign implementation doesn't validate the key handle up

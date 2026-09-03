@@ -13,27 +13,27 @@ namespace pkcs11cpp {
 // unwrapped copy comes back with the same class/type/usage flags.
 class KeyTransport {
 public:
-    enum class WrapMechanism { AesKeyWrap, AesCbcPad, RsaPkcs, RsaOaep };
+    enum class WrapMechanism { kAesKeyWrap, kAesCbcPad, kRsaPkcs, kRsaOaep };
 
     struct WrapResult {
-        std::vector<CK_BYTE> wrappedKey;
-        WrapMechanism mechanism;
-        std::vector<CK_BYTE> iv;  // only populated for AesCbcPad
-        std::vector<CK_ATTRIBUTE> keyTemplate;
-        std::vector<std::vector<CK_BYTE>> templateStorage;  // keeps keyTemplate's pointers alive
+        std::vector<CK_BYTE> wrapped_key_;
+        WrapMechanism mechanism_;
+        std::vector<CK_BYTE> iv_;  // only populated for AesCbcPad
+        std::vector<CK_ATTRIBUTE> key_template_;
+        std::vector<std::vector<CK_BYTE>> template_storage_;  // keeps keyTemplate's pointers alive
     };
 
-    WrapResult wrapKey(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions, CK_OBJECT_HANDLE keyToWrap,
-                        CK_OBJECT_HANDLE wrappingKey, WrapMechanism mechanism = WrapMechanism::AesKeyWrap) const;
+    WrapResult WrapKey(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions, CK_OBJECT_HANDLE key_to_wrap,
+                        CK_OBJECT_HANDLE wrapping_key, WrapMechanism mechanism = WrapMechanism::kAesKeyWrap) const;
 
-    CK_OBJECT_HANDLE unwrapKey(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions, const WrapResult& wrapped,
-                                CK_OBJECT_HANDLE unwrappingKey, const std::string& newLabel = "") const;
+    CK_OBJECT_HANDLE UnwrapKey(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions, const WrapResult& wrapped,
+                                CK_OBJECT_HANDLE unwrapping_key, const std::string& new_label = "") const;
 
 private:
-    static std::vector<CK_BYTE> generateRandomBytes(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions,
+    static std::vector<CK_BYTE> GenerateRandomBytes(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions,
                                                       std::size_t length);
-    static WrapResult extractKeyTemplate(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions,
-                                          CK_OBJECT_HANDLE keyHandle);
+    static WrapResult ExtractKeyTemplate(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions,
+                                          CK_OBJECT_HANDLE key_handle);
 };
 
 }  // namespace pkcs11cpp

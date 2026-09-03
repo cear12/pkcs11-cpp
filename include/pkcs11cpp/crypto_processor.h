@@ -22,58 +22,58 @@ namespace pkcs11cpp {
 class CryptoProcessor {
 public:
     struct Operation {
-        enum class Type { Sign, Verify, Encrypt, Decrypt, Digest };
+        enum class Type { kSign, kVerify, kEncrypt, kDecrypt, kDigest };
 
-        Type type;
-        CK_OBJECT_HANDLE keyHandle = CK_INVALID_HANDLE;
-        CK_MECHANISM mechanism{};
-        std::vector<CK_BYTE> inputData;
-        std::vector<CK_BYTE> outputData;
-        std::vector<CK_BYTE> signature;  // input to Verify
-        bool completed = false;
-        CK_RV result = CKR_OK;
-        std::string operationId;
-        std::function<void(const Operation&)> onComplete;
+        Type type_;
+        CK_OBJECT_HANDLE key_handle_ = CK_INVALID_HANDLE;
+        CK_MECHANISM mechanism_{};
+        std::vector<CK_BYTE> input_data_;
+        std::vector<CK_BYTE> output_data_;
+        std::vector<CK_BYTE> signature_;  // input to Verify
+        bool completed_ = false;
+        CK_RV result_ = CKR_OK;
+        std::string operation_id_;
+        std::function<void(const Operation&)> on_complete_;
     };
 
     CryptoProcessor(CK_SESSION_HANDLE session, CK_FUNCTION_LIST_PTR functions,
-                     std::size_t threadCount = std::thread::hardware_concurrency());
+                     std::size_t thread_count = std::thread::hardware_concurrency());
     ~CryptoProcessor();
 
     CryptoProcessor(const CryptoProcessor&) = delete;
     CryptoProcessor& operator=(const CryptoProcessor&) = delete;
 
-    void start();
-    void stop();
+    void Start();
+    void Stop();
 
-    std::string submit(std::unique_ptr<Operation> operation);
+    std::string Submit(std::unique_ptr<Operation> operation);
 
-    std::vector<std::string> submitSigningBatch(const std::vector<std::vector<CK_BYTE>>& dataToSign,
-                                                 CK_OBJECT_HANDLE signingKey,
-                                                 CK_MECHANISM_TYPE mechanismType = CKM_SHA256_RSA_PKCS);
+    std::vector<std::string> SubmitSigningBatch(const std::vector<std::vector<CK_BYTE>>& data_to_sign,
+                                                 CK_OBJECT_HANDLE signing_key,
+                                                 CK_MECHANISM_TYPE mechanism_type = CKM_SHA256_RSA_PKCS);
 
-    std::vector<std::string> submitEncryptionBatch(const std::vector<std::vector<CK_BYTE>>& dataToEncrypt,
-                                                     CK_OBJECT_HANDLE encryptionKey,
-                                                     CK_MECHANISM_TYPE mechanismType = CKM_AES_CBC_PAD,
+    std::vector<std::string> SubmitEncryptionBatch(const std::vector<std::vector<CK_BYTE>>& data_to_encrypt,
+                                                     CK_OBJECT_HANDLE encryption_key,
+                                                     CK_MECHANISM_TYPE mechanism_type = CKM_AES_CBC_PAD,
                                                      const std::vector<CK_BYTE>& iv = {});
 
 private:
-    void workerLoop();
-    void processOperation(Operation& operation);
-    void processSigning(Operation& operation);
-    void processVerification(Operation& operation);
-    void processEncryption(Operation& operation);
-    void processDecryption(Operation& operation);
-    void processDigest(Operation& operation);
-    static std::string generateOperationId();
+    void WorkerLoop();
+    void ProcessOperation(Operation& operation);
+    void ProcessSigning(Operation& operation);
+    void ProcessVerification(Operation& operation);
+    void ProcessEncryption(Operation& operation);
+    void ProcessDecryption(Operation& operation);
+    void ProcessDigest(Operation& operation);
+    static std::string GenerateOperationId();
 
     CK_SESSION_HANDLE session_;
     CK_FUNCTION_LIST_PTR functions_;
-    std::size_t maxThreads_;
+    std::size_t max_threads_;
 
     std::queue<std::unique_ptr<Operation>> queue_;
-    std::mutex queueMutex_;
-    std::condition_variable queueCondition_;
+    std::mutex queue_mutex_;
+    std::condition_variable queue_condition_;
     std::vector<std::thread> workers_;
     std::atomic<bool> running_{false};
 };

@@ -14,98 +14,98 @@ namespace pkcs11cpp::mock {
 namespace {
 
 struct StoredObject {
-    std::map<CK_ATTRIBUTE_TYPE, std::vector<CK_BYTE>> attributes;
+    std::map<CK_ATTRIBUTE_TYPE, std::vector<CK_BYTE>> attributes_;
 };
 
 struct SessionState {
     // C_FindObjects* state.
-    std::vector<CK_OBJECT_HANDLE> findResults;
-    std::size_t findCursor = 0;
-    bool findActive = false;
+    std::vector<CK_OBJECT_HANDLE> find_results_;
+    std::size_t find_cursor_ = 0;
+    bool find_active_ = false;
 
     // C_SignInit / C_VerifyInit / C_EncryptInit / C_DecryptInit / C_DigestInit
     // each just remember "what operation is pending" -- this mock only
     // supports one active operation of each kind per session, same as the
     // real PKCS#11 state machine.
-    CK_OBJECT_HANDLE activeKey = CK_INVALID_HANDLE;
-    CK_MECHANISM activeMechanism{};
-    std::vector<CK_BYTE> activeMechanismParam;
+    CK_OBJECT_HANDLE active_key_ = CK_INVALID_HANDLE;
+    CK_MECHANISM active_mechanism_{};
+    std::vector<CK_BYTE> active_mechanism_param_;
 };
 
 class Token {
 public:
-    static Token& instance() {
+    static Token& Instance() {
         static Token token;
         return token;
     }
 
-    void reset() {
+    void Reset() {
         std::lock_guard<std::mutex> lock(mutex_);
         objects_.clear();
         sessions_.clear();
-        nextObjectHandle_ = 1;
-        nextSessionHandle_ = 1;
-        lowMemory_ = false;
+        next_object_handle_ = 1;
+        next_session_handle_ = 1;
+        low_memory_ = false;
     }
 
-    void setLowMemory(bool enabled) {
+    void SetLowMemory(bool enabled) {
         std::lock_guard<std::mutex> lock(mutex_);
-        lowMemory_ = enabled;
+        low_memory_ = enabled;
     }
 
-    bool lowMemory() const {
+    bool LowMemory() const {
         std::lock_guard<std::mutex> lock(mutex_);
-        return lowMemory_;
+        return low_memory_;
     }
 
-    CK_SESSION_HANDLE openSession() {
+    CK_SESSION_HANDLE OpenSession() {
         std::lock_guard<std::mutex> lock(mutex_);
-        CK_SESSION_HANDLE handle = nextSessionHandle_++;
+        CK_SESSION_HANDLE handle = next_session_handle_++;
         sessions_[handle] = SessionState{};
         return handle;
     }
 
-    bool closeSession(CK_SESSION_HANDLE handle) {
+    bool CloseSession(CK_SESSION_HANDLE handle) {
         std::lock_guard<std::mutex> lock(mutex_);
         return sessions_.erase(handle) > 0;
     }
 
-    SessionState* session(CK_SESSION_HANDLE handle) {
+    SessionState* Session(CK_SESSION_HANDLE handle) {
         auto it = sessions_.find(handle);
         return it == sessions_.end() ? nullptr : &it->second;
     }
 
-    CK_OBJECT_HANDLE createObject(const CK_ATTRIBUTE* tmpl, CK_ULONG count) {
+    CK_OBJECT_HANDLE CreateObject(const CK_ATTRIBUTE* tmpl, CK_ULONG count) {
         std::lock_guard<std::mutex> lock(mutex_);
-        CK_OBJECT_HANDLE handle = nextObjectHandle_++;
+        CK_OBJECT_HANDLE handle = next_object_handle_++;
         StoredObject obj;
         for (CK_ULONG i = 0; i < count; ++i) {
             const auto& attr = tmpl[i];
             const auto* bytes = static_cast<const CK_BYTE*>(attr.pValue);
-            obj.attributes[attr.type] = std::vector<CK_BYTE>(bytes, bytes + attr.ulValueLen);
+            obj.attributes_[attr.type] = std::vector<CK_BYTE>(bytes, bytes + attr.ulValueLen);
         }
         objects_[handle] = std::move(obj);
         return handle;
     }
 
-    StoredObject* object(CK_OBJECT_HANDLE handle) {
+    StoredObject* Object(CK_OBJECT_HANDLE handle) {
         auto it = objects_.find(handle);
         return it == objects_.end() ? nullptr : &it->second;
     }
 
-    void destroyObject(CK_OBJECT_HANDLE handle) {
+    void DestroyObject(CK_OBJECT_HANDLE handle) {
         std::lock_guard<std::mutex> lock(mutex_);
         objects_.erase(handle);
     }
 
-    std::vector<CK_OBJECT_HANDLE> findMatching(const CK_ATTRIBUTE* tmpl, CK_ULONG count) const {
+    std::vector<CK_OBJECT_HANDLE> FindMatching(const CK_ATTRIBUTE* tmpl, CK_ULONG count) const {
         std::vector<CK_OBJECT_HANDLE> matches;
         for (const auto& [handle, obj] : objects_) {
             bool ok = true;
             for (CK_ULONG i = 0; ok && i < count; ++i) {
                 const auto& attr = tmpl[i];
-                auto it = obj.attributes.find(attr.type);
-                if (it == obj.attributes.end()) {
+                auto it = obj.attributes_.find(attr.type);
+                if (it == obj.attributes_.end()) {
                     ok = false;
                     break;
                 }
@@ -120,7 +120,7 @@ public:
         return matches;
     }
 
-    std::vector<CK_BYTE> randomBytes(std::size_t length) {
+    std::vector<CK_BYTE> RandomBytes(std::size_t length) {
         std::vector<CK_BYTE> out(length);
         std::uniform_int_distribution<int> dist(0, 255);
         for (auto& b : out) b = static_cast<CK_BYTE>(dist(rng_));
@@ -131,9 +131,9 @@ private:
     mutable std::mutex mutex_;
     std::map<CK_OBJECT_HANDLE, StoredObject> objects_;
     std::map<CK_SESSION_HANDLE, SessionState> sessions_;
-    CK_OBJECT_HANDLE nextObjectHandle_ = 1;
-    CK_SESSION_HANDLE nextSessionHandle_ = 1;
-    bool lowMemory_ = false;
+    CK_OBJECT_HANDLE next_object_handle_ = 1;
+    CK_SESSION_HANDLE next_session_handle_ = 1;
+    bool low_memory_ = false;
     std::mt19937 rng_{std::random_device{}()};
 };
 
@@ -141,7 +141,7 @@ private:
 // successive HMAC-SHA256(secret, counter) blocks -- a simplified
 // HKDF-expand. Used both as a keystream (mock Encrypt/Decrypt) and as a
 // key-derivation primitive (mock DeriveKey).
-std::vector<CK_BYTE> expandKeystream(const std::vector<CK_BYTE>& secret, std::size_t length,
+std::vector<CK_BYTE> ExpandKeystream(const std::vector<CK_BYTE>& secret, std::size_t length,
                                       const std::vector<CK_BYTE>& context = {}) {
     std::vector<CK_BYTE> out;
     out.reserve(length);
@@ -152,363 +152,363 @@ std::vector<CK_BYTE> expandKeystream(const std::vector<CK_BYTE>& secret, std::si
         block.push_back(static_cast<CK_BYTE>(counter >> 8));
         block.push_back(static_cast<CK_BYTE>(counter));
 
-        auto digest = hmacSha256(secret, block);
+        auto digest = HmacSha256(secret, block);
         std::size_t take = std::min<std::size_t>(digest.size(), length - out.size());
         out.insert(out.end(), digest.begin(), digest.begin() + static_cast<long>(take));
     }
     return out;
 }
 
-std::vector<CK_BYTE> keyValueOrEmpty(CK_OBJECT_HANDLE handle) {
-    auto* obj = Token::instance().object(handle);
+std::vector<CK_BYTE> KeyValueOrEmpty(CK_OBJECT_HANDLE handle) {
+    auto* obj = Token::Instance().Object(handle);
     if (obj == nullptr) return {};
-    auto it = obj->attributes.find(CKA_VALUE);
-    return it == obj->attributes.end() ? std::vector<CK_BYTE>{} : it->second;
+    auto it = obj->attributes_.find(CKA_VALUE);
+    return it == obj->attributes_.end() ? std::vector<CK_BYTE>{} : it->second;
 }
 
 // --- CK_FUNCTION_LIST entry points ------------------------------------------
 
-CK_RV Mock_Initialize(CK_VOID_PTR) { return CKR_OK; }
+CK_RV MockInitialize(CK_VOID_PTR) { return CKR_OK; }
 
-CK_RV Mock_OpenSession(CK_SLOT_ID, CK_FLAGS, CK_VOID_PTR, CK_NOTIFY, CK_SESSION_HANDLE_PTR phSession) {
-    *phSession = Token::instance().openSession();
+CK_RV MockOpenSession(CK_SLOT_ID, CK_FLAGS, CK_VOID_PTR, CK_NOTIFY, CK_SESSION_HANDLE_PTR ph_session) {
+    *ph_session = Token::Instance().OpenSession();
     return CKR_OK;
 }
 
-CK_RV Mock_CloseSession(CK_SESSION_HANDLE hSession) {
-    return Token::instance().closeSession(hSession) ? CKR_OK : CKR_GENERAL_ERROR;
+CK_RV MockCloseSession(CK_SESSION_HANDLE h_session) {
+    return Token::Instance().CloseSession(h_session) ? CKR_OK : CKR_GENERAL_ERROR;
 }
 
-CK_RV Mock_Login(CK_SESSION_HANDLE, CK_USER_TYPE, CK_UTF8CHAR_PTR, CK_ULONG) {
+CK_RV MockLogin(CK_SESSION_HANDLE, CK_USER_TYPE, CK_UTF8CHAR_PTR, CK_ULONG) {
     // The mock does not enforce a real PIN policy; any credentials succeed
     // so tests can focus on the wrapper logic rather than auth plumbing.
     return CKR_OK;
 }
 
-CK_RV Mock_GenerateRandom(CK_SESSION_HANDLE, CK_BYTE_PTR pRandomData, CK_ULONG ulRandomLen) {
-    auto bytes = Token::instance().randomBytes(ulRandomLen);
-    std::memcpy(pRandomData, bytes.data(), ulRandomLen);
+CK_RV MockGenerateRandom(CK_SESSION_HANDLE, CK_BYTE_PTR p_random_data, CK_ULONG ul_random_len) {
+    auto bytes = Token::Instance().RandomBytes(ul_random_len);
+    std::memcpy(p_random_data, bytes.data(), ul_random_len);
     return CKR_OK;
 }
 
-CK_RV Mock_GenerateKey(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
-                        CK_OBJECT_HANDLE_PTR phKey) {
-    CK_ULONG valueLen = 32;
-    for (CK_ULONG i = 0; i < ulCount; ++i) {
-        if (pTemplate[i].type == CKA_VALUE_LEN) {
-            valueLen = *static_cast<CK_ULONG*>(pTemplate[i].pValue);
+CK_RV MockGenerateKey(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR p_template, CK_ULONG ul_count,
+                        CK_OBJECT_HANDLE_PTR ph_key) {
+    CK_ULONG value_len = 32;
+    for (CK_ULONG i = 0; i < ul_count; ++i) {
+        if (p_template[i].type == CKA_VALUE_LEN) {
+            value_len = *static_cast<CK_ULONG*>(p_template[i].pValue);
         }
     }
 
-    std::vector<CK_ATTRIBUTE> full(pTemplate, pTemplate + ulCount);
-    auto keyValue = Token::instance().randomBytes(valueLen);
-    full.push_back({CKA_VALUE, keyValue.data(), static_cast<CK_ULONG>(keyValue.size())});
+    std::vector<CK_ATTRIBUTE> full(p_template, p_template + ul_count);
+    auto key_value = Token::Instance().RandomBytes(value_len);
+    full.push_back({CKA_VALUE, key_value.data(), static_cast<CK_ULONG>(key_value.size())});
 
-    *phKey = Token::instance().createObject(full.data(), static_cast<CK_ULONG>(full.size()));
+    *ph_key = Token::Instance().CreateObject(full.data(), static_cast<CK_ULONG>(full.size()));
     return CKR_OK;
 }
 
-CK_RV Mock_GenerateKeyPair(CK_SESSION_HANDLE, CK_MECHANISM_PTR,
-                            CK_ATTRIBUTE_PTR pPublicTemplate, CK_ULONG ulPublicCount,
-                            CK_ATTRIBUTE_PTR pPrivateTemplate, CK_ULONG ulPrivateCount,
-                            CK_OBJECT_HANDLE_PTR phPublicKey, CK_OBJECT_HANDLE_PTR phPrivateKey) {
-    auto privateMaterial = Token::instance().randomBytes(32);
-    auto publicMaterial = Token::instance().randomBytes(32);  // mock "public point"/modulus
+CK_RV MockGenerateKeyPair(CK_SESSION_HANDLE, CK_MECHANISM_PTR,
+                            CK_ATTRIBUTE_PTR p_public_template, CK_ULONG ul_public_count,
+                            CK_ATTRIBUTE_PTR p_private_template, CK_ULONG ul_private_count,
+                            CK_OBJECT_HANDLE_PTR ph_public_key, CK_OBJECT_HANDLE_PTR ph_private_key) {
+    auto private_material = Token::Instance().RandomBytes(32);
+    auto public_material = Token::Instance().RandomBytes(32);  // mock "public point"/modulus
 
-    std::vector<CK_ATTRIBUTE> pubFull(pPublicTemplate, pPublicTemplate + ulPublicCount);
-    pubFull.push_back({CKA_VALUE, publicMaterial.data(), static_cast<CK_ULONG>(publicMaterial.size())});
-    *phPublicKey = Token::instance().createObject(pubFull.data(), static_cast<CK_ULONG>(pubFull.size()));
+    std::vector<CK_ATTRIBUTE> pub_full(p_public_template, p_public_template + ul_public_count);
+    pub_full.push_back({CKA_VALUE, public_material.data(), static_cast<CK_ULONG>(public_material.size())});
+    *ph_public_key = Token::Instance().CreateObject(pub_full.data(), static_cast<CK_ULONG>(pub_full.size()));
 
-    std::vector<CK_ATTRIBUTE> privFull(pPrivateTemplate, pPrivateTemplate + ulPrivateCount);
-    privFull.push_back({CKA_VALUE, privateMaterial.data(), static_cast<CK_ULONG>(privateMaterial.size())});
-    *phPrivateKey = Token::instance().createObject(privFull.data(), static_cast<CK_ULONG>(privFull.size()));
+    std::vector<CK_ATTRIBUTE> priv_full(p_private_template, p_private_template + ul_private_count);
+    priv_full.push_back({CKA_VALUE, private_material.data(), static_cast<CK_ULONG>(private_material.size())});
+    *ph_private_key = Token::Instance().CreateObject(priv_full.data(), static_cast<CK_ULONG>(priv_full.size()));
 
     return CKR_OK;
 }
 
-CK_RV Mock_DeriveKey(CK_SESSION_HANDLE, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hBaseKey,
-                      CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phKey) {
-    CK_ULONG valueLen = 32;
-    for (CK_ULONG i = 0; i < ulCount; ++i) {
-        if (pTemplate[i].type == CKA_VALUE_LEN) {
-            valueLen = *static_cast<CK_ULONG*>(pTemplate[i].pValue);
+CK_RV MockDeriveKey(CK_SESSION_HANDLE, CK_MECHANISM_PTR p_mechanism, CK_OBJECT_HANDLE h_base_key,
+                      CK_ATTRIBUTE_PTR p_template, CK_ULONG ul_count, CK_OBJECT_HANDLE_PTR ph_key) {
+    CK_ULONG value_len = 32;
+    for (CK_ULONG i = 0; i < ul_count; ++i) {
+        if (p_template[i].type == CKA_VALUE_LEN) {
+            value_len = *static_cast<CK_ULONG*>(p_template[i].pValue);
         }
     }
 
-    auto baseValue = keyValueOrEmpty(hBaseKey);
-    if (baseValue.empty()) {
+    auto base_value = KeyValueOrEmpty(h_base_key);
+    if (base_value.empty()) {
         // PBKDF2 in this repo derives from a password, not a base key
         // object (hBaseKey == CK_INVALID_HANDLE); fall back to the
         // mechanism's own parameter bytes as the derivation secret so the
         // call still produces a deterministic, reproducible key.
-        baseValue.assign(reinterpret_cast<const CK_BYTE*>(&pMechanism->mechanism),
-                          reinterpret_cast<const CK_BYTE*>(&pMechanism->mechanism) + sizeof(pMechanism->mechanism));
+        base_value.assign(reinterpret_cast<const CK_BYTE*>(&p_mechanism->mechanism),
+                          reinterpret_cast<const CK_BYTE*>(&p_mechanism->mechanism) + sizeof(p_mechanism->mechanism));
     }
 
     std::vector<CK_BYTE> context;
-    if (pMechanism->pParameter != nullptr && pMechanism->ulParameterLen > 0) {
-        const auto* raw = static_cast<const CK_BYTE*>(pMechanism->pParameter);
-        context.assign(raw, raw + std::min<CK_ULONG>(pMechanism->ulParameterLen, 64));
+    if (p_mechanism->pParameter != nullptr && p_mechanism->ulParameterLen > 0) {
+        const auto* raw = static_cast<const CK_BYTE*>(p_mechanism->pParameter);
+        context.assign(raw, raw + std::min<CK_ULONG>(p_mechanism->ulParameterLen, 64));
     }
 
-    auto derived = expandKeystream(baseValue, valueLen, context);
+    auto derived = ExpandKeystream(base_value, value_len, context);
 
-    std::vector<CK_ATTRIBUTE> full(pTemplate, pTemplate + ulCount);
+    std::vector<CK_ATTRIBUTE> full(p_template, p_template + ul_count);
     full.push_back({CKA_VALUE, derived.data(), static_cast<CK_ULONG>(derived.size())});
-    *phKey = Token::instance().createObject(full.data(), static_cast<CK_ULONG>(full.size()));
+    *ph_key = Token::Instance().CreateObject(full.data(), static_cast<CK_ULONG>(full.size()));
     return CKR_OK;
 }
 
-CK_RV Mock_WrapKey(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE hWrappingKey, CK_OBJECT_HANDLE hKey,
-                    CK_BYTE_PTR pWrappedKey, CK_ULONG_PTR pulWrappedKeyLen) {
-    auto keyValue = keyValueOrEmpty(hKey);
-    if (pWrappedKey == nullptr) {
-        *pulWrappedKeyLen = static_cast<CK_ULONG>(keyValue.size());
+CK_RV MockWrapKey(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE h_wrapping_key, CK_OBJECT_HANDLE h_key,
+                    CK_BYTE_PTR p_wrapped_key, CK_ULONG_PTR pul_wrapped_key_len) {
+    auto key_value = KeyValueOrEmpty(h_key);
+    if (p_wrapped_key == nullptr) {
+        *pul_wrapped_key_len = static_cast<CK_ULONG>(key_value.size());
         return CKR_OK;
     }
 
-    auto wrappingSecret = keyValueOrEmpty(hWrappingKey);
-    auto keystream = expandKeystream(wrappingSecret, keyValue.size());
-    std::vector<CK_BYTE> wrapped(keyValue.size());
-    for (std::size_t i = 0; i < keyValue.size(); ++i) wrapped[i] = keyValue[i] ^ keystream[i];
+    auto wrapping_secret = KeyValueOrEmpty(h_wrapping_key);
+    auto keystream = ExpandKeystream(wrapping_secret, key_value.size());
+    std::vector<CK_BYTE> wrapped(key_value.size());
+    for (std::size_t i = 0; i < key_value.size(); ++i) wrapped[i] = key_value[i] ^ keystream[i];
 
-    std::memcpy(pWrappedKey, wrapped.data(), wrapped.size());
-    *pulWrappedKeyLen = static_cast<CK_ULONG>(wrapped.size());
+    std::memcpy(p_wrapped_key, wrapped.data(), wrapped.size());
+    *pul_wrapped_key_len = static_cast<CK_ULONG>(wrapped.size());
     return CKR_OK;
 }
 
-CK_RV Mock_UnwrapKey(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE hUnwrappingKey,
-                      CK_BYTE_PTR pWrappedKey, CK_ULONG ulWrappedKeyLen,
-                      CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phKey) {
-    auto unwrappingSecret = keyValueOrEmpty(hUnwrappingKey);
-    auto keystream = expandKeystream(unwrappingSecret, ulWrappedKeyLen);
+CK_RV MockUnwrapKey(CK_SESSION_HANDLE, CK_MECHANISM_PTR, CK_OBJECT_HANDLE h_unwrapping_key,
+                      CK_BYTE_PTR p_wrapped_key, CK_ULONG ul_wrapped_key_len,
+                      CK_ATTRIBUTE_PTR p_template, CK_ULONG ul_count, CK_OBJECT_HANDLE_PTR ph_key) {
+    auto unwrapping_secret = KeyValueOrEmpty(h_unwrapping_key);
+    auto keystream = ExpandKeystream(unwrapping_secret, ul_wrapped_key_len);
 
-    std::vector<CK_BYTE> plain(ulWrappedKeyLen);
-    for (CK_ULONG i = 0; i < ulWrappedKeyLen; ++i) plain[i] = pWrappedKey[i] ^ keystream[i];
+    std::vector<CK_BYTE> plain(ul_wrapped_key_len);
+    for (CK_ULONG i = 0; i < ul_wrapped_key_len; ++i) plain[i] = p_wrapped_key[i] ^ keystream[i];
 
-    std::vector<CK_ATTRIBUTE> full(pTemplate, pTemplate + ulCount);
+    std::vector<CK_ATTRIBUTE> full(p_template, p_template + ul_count);
     full.push_back({CKA_VALUE, plain.data(), static_cast<CK_ULONG>(plain.size())});
-    *phKey = Token::instance().createObject(full.data(), static_cast<CK_ULONG>(full.size()));
+    *ph_key = Token::Instance().CreateObject(full.data(), static_cast<CK_ULONG>(full.size()));
     return CKR_OK;
 }
 
-CK_RV Mock_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-    auto* session = Token::instance().session(hSession);
+CK_RV MockSignInit(CK_SESSION_HANDLE h_session, CK_MECHANISM_PTR p_mechanism, CK_OBJECT_HANDLE h_key) {
+    auto* session = Token::Instance().Session(h_session);
     if (session == nullptr) return CKR_GENERAL_ERROR;
-    session->activeKey = hKey;
-    session->activeMechanism = *pMechanism;
+    session->active_key_ = h_key;
+    session->active_mechanism_ = *p_mechanism;
     return CKR_OK;
 }
 
-CK_RV Mock_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen,
-                CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
-    auto* session = Token::instance().session(hSession);
+CK_RV MockSign(CK_SESSION_HANDLE h_session, CK_BYTE_PTR p_data, CK_ULONG ul_data_len,
+                CK_BYTE_PTR p_signature, CK_ULONG_PTR pul_signature_len) {
+    auto* session = Token::Instance().Session(h_session);
     if (session == nullptr) return CKR_GENERAL_ERROR;
 
-    if (pSignature == nullptr) {
-        *pulSignatureLen = Sha256::kDigestSize;
+    if (p_signature == nullptr) {
+        *pul_signature_len = Sha256::kDigestSize;
         return CKR_OK;
     }
 
-    auto keyValue = keyValueOrEmpty(session->activeKey);
-    std::vector<CK_BYTE> data(pData, pData + ulDataLen);
-    auto mac = hmacSha256(keyValue, data);
-    std::memcpy(pSignature, mac.data(), mac.size());
-    *pulSignatureLen = static_cast<CK_ULONG>(mac.size());
+    auto key_value = KeyValueOrEmpty(session->active_key_);
+    std::vector<CK_BYTE> data(p_data, p_data + ul_data_len);
+    auto mac = HmacSha256(key_value, data);
+    std::memcpy(p_signature, mac.data(), mac.size());
+    *pul_signature_len = static_cast<CK_ULONG>(mac.size());
     return CKR_OK;
 }
 
-CK_RV Mock_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-    return Mock_SignInit(hSession, pMechanism, hKey);
+CK_RV MockVerifyInit(CK_SESSION_HANDLE h_session, CK_MECHANISM_PTR p_mechanism, CK_OBJECT_HANDLE h_key) {
+    return MockSignInit(h_session, p_mechanism, h_key);
 }
 
-CK_RV Mock_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen,
-                   CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen) {
-    auto* session = Token::instance().session(hSession);
+CK_RV MockVerify(CK_SESSION_HANDLE h_session, CK_BYTE_PTR p_data, CK_ULONG ul_data_len,
+                   CK_BYTE_PTR p_signature, CK_ULONG ul_signature_len) {
+    auto* session = Token::Instance().Session(h_session);
     if (session == nullptr) return CKR_GENERAL_ERROR;
 
-    auto keyValue = keyValueOrEmpty(session->activeKey);
-    std::vector<CK_BYTE> data(pData, pData + ulDataLen);
-    auto mac = hmacSha256(keyValue, data);
+    auto key_value = KeyValueOrEmpty(session->active_key_);
+    std::vector<CK_BYTE> data(p_data, p_data + ul_data_len);
+    auto mac = HmacSha256(key_value, data);
 
-    if (ulSignatureLen != mac.size() || !std::equal(mac.begin(), mac.end(), pSignature)) {
+    if (ul_signature_len != mac.size() || !std::equal(mac.begin(), mac.end(), p_signature)) {
         return CKR_GENERAL_ERROR;
     }
     return CKR_OK;
 }
 
-CK_RV Mock_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-    auto* session = Token::instance().session(hSession);
+CK_RV MockEncryptInit(CK_SESSION_HANDLE h_session, CK_MECHANISM_PTR p_mechanism, CK_OBJECT_HANDLE h_key) {
+    auto* session = Token::Instance().Session(h_session);
     if (session == nullptr) return CKR_GENERAL_ERROR;
-    session->activeKey = hKey;
-    session->activeMechanism = *pMechanism;
-    session->activeMechanismParam.clear();
-    if (pMechanism->pParameter != nullptr && pMechanism->ulParameterLen > 0) {
-        const auto* raw = static_cast<const CK_BYTE*>(pMechanism->pParameter);
-        session->activeMechanismParam.assign(raw, raw + pMechanism->ulParameterLen);
+    session->active_key_ = h_key;
+    session->active_mechanism_ = *p_mechanism;
+    session->active_mechanism_param_.clear();
+    if (p_mechanism->pParameter != nullptr && p_mechanism->ulParameterLen > 0) {
+        const auto* raw = static_cast<const CK_BYTE*>(p_mechanism->pParameter);
+        session->active_mechanism_param_.assign(raw, raw + p_mechanism->ulParameterLen);
     }
     return CKR_OK;
 }
 
-CK_RV Mock_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-    return Mock_EncryptInit(hSession, pMechanism, hKey);
+CK_RV MockDecryptInit(CK_SESSION_HANDLE h_session, CK_MECHANISM_PTR p_mechanism, CK_OBJECT_HANDLE h_key) {
+    return MockEncryptInit(h_session, p_mechanism, h_key);
 }
 
 // Encrypt and Decrypt are the same XOR-keystream transform (see the class
 // comment in mock_module.h for why this stands in for AES).
-CK_RV xorTransform(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pIn, CK_ULONG ulInLen,
-                    CK_BYTE_PTR pOut, CK_ULONG_PTR pulOutLen) {
-    auto* session = Token::instance().session(hSession);
+CK_RV XorTransform(CK_SESSION_HANDLE h_session, CK_BYTE_PTR p_in, CK_ULONG ul_in_len,
+                    CK_BYTE_PTR p_out, CK_ULONG_PTR pul_out_len) {
+    auto* session = Token::Instance().Session(h_session);
     if (session == nullptr) return CKR_GENERAL_ERROR;
 
-    if (pOut == nullptr) {
-        *pulOutLen = ulInLen;
+    if (p_out == nullptr) {
+        *pul_out_len = ul_in_len;
         return CKR_OK;
     }
 
-    auto keyValue = keyValueOrEmpty(session->activeKey);
-    auto keystream = expandKeystream(keyValue, ulInLen, session->activeMechanismParam);
-    for (CK_ULONG i = 0; i < ulInLen; ++i) pOut[i] = pIn[i] ^ keystream[i];
-    *pulOutLen = ulInLen;
+    auto key_value = KeyValueOrEmpty(session->active_key_);
+    auto keystream = ExpandKeystream(key_value, ul_in_len, session->active_mechanism_param_);
+    for (CK_ULONG i = 0; i < ul_in_len; ++i) p_out[i] = p_in[i] ^ keystream[i];
+    *pul_out_len = ul_in_len;
     return CKR_OK;
 }
 
-CK_RV Mock_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen,
-                    CK_BYTE_PTR pEncrypted, CK_ULONG_PTR pulEncryptedLen) {
-    return xorTransform(hSession, pData, ulDataLen, pEncrypted, pulEncryptedLen);
+CK_RV MockEncrypt(CK_SESSION_HANDLE h_session, CK_BYTE_PTR p_data, CK_ULONG ul_data_len,
+                    CK_BYTE_PTR p_encrypted, CK_ULONG_PTR pul_encrypted_len) {
+    return XorTransform(h_session, p_data, ul_data_len, p_encrypted, pul_encrypted_len);
 }
 
-CK_RV Mock_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen,
-                    CK_BYTE_PTR pDecrypted, CK_ULONG_PTR pulDecryptedLen) {
-    return xorTransform(hSession, pData, ulDataLen, pDecrypted, pulDecryptedLen);
+CK_RV MockDecrypt(CK_SESSION_HANDLE h_session, CK_BYTE_PTR p_data, CK_ULONG ul_data_len,
+                    CK_BYTE_PTR p_decrypted, CK_ULONG_PTR pul_decrypted_len) {
+    return XorTransform(h_session, p_data, ul_data_len, p_decrypted, pul_decrypted_len);
 }
 
-CK_RV Mock_DigestInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism) {
-    auto* session = Token::instance().session(hSession);
+CK_RV MockDigestInit(CK_SESSION_HANDLE h_session, CK_MECHANISM_PTR p_mechanism) {
+    auto* session = Token::Instance().Session(h_session);
     if (session == nullptr) return CKR_GENERAL_ERROR;
-    session->activeMechanism = *pMechanism;
+    session->active_mechanism_ = *p_mechanism;
     return CKR_OK;
 }
 
-CK_RV Mock_Digest(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen,
-                   CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen) {
-    (void)hSession;
-    if (pDigest == nullptr) {
-        *pulDigestLen = Sha256::kDigestSize;
+CK_RV MockDigest(CK_SESSION_HANDLE h_session, CK_BYTE_PTR p_data, CK_ULONG ul_data_len,
+                   CK_BYTE_PTR p_digest, CK_ULONG_PTR pul_digest_len) {
+    (void)h_session;
+    if (p_digest == nullptr) {
+        *pul_digest_len = Sha256::kDigestSize;
         return CKR_OK;
     }
-    auto digest = Sha256::hash(std::vector<CK_BYTE>(pData, pData + ulDataLen));
-    std::memcpy(pDigest, digest.data(), digest.size());
-    *pulDigestLen = static_cast<CK_ULONG>(digest.size());
+    auto digest = Sha256::Hash(std::vector<CK_BYTE>(p_data, p_data + ul_data_len));
+    std::memcpy(p_digest, digest.data(), digest.size());
+    *pul_digest_len = static_cast<CK_ULONG>(digest.size());
     return CKR_OK;
 }
 
-CK_RV Mock_GetAttributeValue(CK_SESSION_HANDLE, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate,
-                              CK_ULONG ulCount) {
-    auto* obj = Token::instance().object(hObject);
+CK_RV MockGetAttributeValue(CK_SESSION_HANDLE, CK_OBJECT_HANDLE h_object, CK_ATTRIBUTE_PTR p_template,
+                              CK_ULONG ul_count) {
+    auto* obj = Token::Instance().Object(h_object);
     if (obj == nullptr) return CKR_GENERAL_ERROR;
 
-    for (CK_ULONG i = 0; i < ulCount; ++i) {
-        auto it = obj->attributes.find(pTemplate[i].type);
-        if (it == obj->attributes.end()) {
-            pTemplate[i].ulValueLen = CK_UNAVAILABLE_INFORMATION;
+    for (CK_ULONG i = 0; i < ul_count; ++i) {
+        auto it = obj->attributes_.find(p_template[i].type);
+        if (it == obj->attributes_.end()) {
+            p_template[i].ulValueLen = CK_UNAVAILABLE_INFORMATION;
             continue;
         }
-        if (pTemplate[i].pValue == nullptr) {
-            pTemplate[i].ulValueLen = static_cast<CK_ULONG>(it->second.size());
+        if (p_template[i].pValue == nullptr) {
+            p_template[i].ulValueLen = static_cast<CK_ULONG>(it->second.size());
         } else {
-            std::memcpy(pTemplate[i].pValue, it->second.data(), it->second.size());
-            pTemplate[i].ulValueLen = static_cast<CK_ULONG>(it->second.size());
+            std::memcpy(p_template[i].pValue, it->second.data(), it->second.size());
+            p_template[i].ulValueLen = static_cast<CK_ULONG>(it->second.size());
         }
     }
     return CKR_OK;
 }
 
-CK_RV Mock_SetAttributeValue(CK_SESSION_HANDLE, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate,
-                              CK_ULONG ulCount) {
-    auto* obj = Token::instance().object(hObject);
+CK_RV MockSetAttributeValue(CK_SESSION_HANDLE, CK_OBJECT_HANDLE h_object, CK_ATTRIBUTE_PTR p_template,
+                              CK_ULONG ul_count) {
+    auto* obj = Token::Instance().Object(h_object);
     if (obj == nullptr) return CKR_GENERAL_ERROR;
 
-    for (CK_ULONG i = 0; i < ulCount; ++i) {
-        const auto* bytes = static_cast<const CK_BYTE*>(pTemplate[i].pValue);
-        obj->attributes[pTemplate[i].type] = std::vector<CK_BYTE>(bytes, bytes + pTemplate[i].ulValueLen);
+    for (CK_ULONG i = 0; i < ul_count; ++i) {
+        const auto* bytes = static_cast<const CK_BYTE*>(p_template[i].pValue);
+        obj->attributes_[p_template[i].type] = std::vector<CK_BYTE>(bytes, bytes + p_template[i].ulValueLen);
     }
     return CKR_OK;
 }
 
-CK_RV Mock_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
-    auto* session = Token::instance().session(hSession);
+CK_RV MockFindObjectsInit(CK_SESSION_HANDLE h_session, CK_ATTRIBUTE_PTR p_template, CK_ULONG ul_count) {
+    auto* session = Token::Instance().Session(h_session);
     if (session == nullptr) return CKR_GENERAL_ERROR;
-    session->findResults = Token::instance().findMatching(pTemplate, ulCount);
-    session->findCursor = 0;
-    session->findActive = true;
+    session->find_results_ = Token::Instance().FindMatching(p_template, ul_count);
+    session->find_cursor_ = 0;
+    session->find_active_ = true;
     return CKR_OK;
 }
 
-CK_RV Mock_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG ulMaxObjectCount,
-                        CK_ULONG_PTR pulObjectCount) {
-    auto* session = Token::instance().session(hSession);
-    if (session == nullptr || !session->findActive) return CKR_GENERAL_ERROR;
+CK_RV MockFindObjects(CK_SESSION_HANDLE h_session, CK_OBJECT_HANDLE_PTR ph_object, CK_ULONG ul_max_object_count,
+                        CK_ULONG_PTR pul_object_count) {
+    auto* session = Token::Instance().Session(h_session);
+    if (session == nullptr || !session->find_active_) return CKR_GENERAL_ERROR;
 
     CK_ULONG produced = 0;
-    while (produced < ulMaxObjectCount && session->findCursor < session->findResults.size()) {
-        phObject[produced++] = session->findResults[session->findCursor++];
+    while (produced < ul_max_object_count && session->find_cursor_ < session->find_results_.size()) {
+        ph_object[produced++] = session->find_results_[session->find_cursor_++];
     }
-    *pulObjectCount = produced;
+    *pul_object_count = produced;
     return CKR_OK;
 }
 
-CK_RV Mock_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
-    auto* session = Token::instance().session(hSession);
+CK_RV MockFindObjectsFinal(CK_SESSION_HANDLE h_session) {
+    auto* session = Token::Instance().Session(h_session);
     if (session == nullptr) return CKR_GENERAL_ERROR;
-    session->findActive = false;
-    session->findResults.clear();
-    session->findCursor = 0;
+    session->find_active_ = false;
+    session->find_results_.clear();
+    session->find_cursor_ = 0;
     return CKR_OK;
 }
 
-CK_RV Mock_DestroyObject(CK_SESSION_HANDLE, CK_OBJECT_HANDLE hObject) {
-    Token::instance().destroyObject(hObject);
+CK_RV MockDestroyObject(CK_SESSION_HANDLE, CK_OBJECT_HANDLE h_object) {
+    Token::Instance().DestroyObject(h_object);
     return CKR_OK;
 }
 
-CK_RV Mock_GetSlotList(CK_BBOOL, CK_ULONG* pSlotList, CK_ULONG_PTR pulCount) {
-    if (pSlotList == nullptr) {
-        *pulCount = 1;
+CK_RV MockGetSlotList(CK_BBOOL, CK_ULONG* p_slot_list, CK_ULONG_PTR pul_count) {
+    if (p_slot_list == nullptr) {
+        *pul_count = 1;
         return CKR_OK;
     }
-    if (*pulCount < 1) return CKR_GENERAL_ERROR;
-    pSlotList[0] = 0;
-    *pulCount = 1;
+    if (*pul_count < 1) return CKR_GENERAL_ERROR;
+    p_slot_list[0] = 0;
+    *pul_count = 1;
     return CKR_OK;
 }
 
-CK_RV Mock_GetSlotInfo(CK_SLOT_ID, CK_SLOT_INFO* pInfo) {
-    std::memset(pInfo, 0, sizeof(*pInfo));
-    std::snprintf(pInfo->slotDescription, sizeof(pInfo->slotDescription), "pkcs11cpp mock slot");
-    pInfo->flags = CKF_TOKEN_PRESENT;
+CK_RV MockGetSlotInfo(CK_SLOT_ID, CK_SLOT_INFO* p_info) {
+    std::memset(p_info, 0, sizeof(*p_info));
+    std::snprintf(p_info->slotDescription, sizeof(p_info->slotDescription), "pkcs11cpp mock slot");
+    p_info->flags = CKF_TOKEN_PRESENT;
     return CKR_OK;
 }
 
-CK_RV Mock_GetTokenInfo(CK_SLOT_ID, CK_TOKEN_INFO* pInfo) {
-    std::memset(pInfo, 0, sizeof(*pInfo));
-    std::snprintf(pInfo->label, sizeof(pInfo->label), "pkcs11cpp mock token");
-    pInfo->flags = 0;
-    bool low = Token::instance().lowMemory();
-    pInfo->ulFreePrivateMemory = low ? 512 : (1u << 20);
-    pInfo->ulFreePublicMemory = low ? 512 : (1u << 20);
+CK_RV MockGetTokenInfo(CK_SLOT_ID, CK_TOKEN_INFO* p_info) {
+    std::memset(p_info, 0, sizeof(*p_info));
+    std::snprintf(p_info->label, sizeof(p_info->label), "pkcs11cpp mock token");
+    p_info->flags = 0;
+    bool low = Token::Instance().LowMemory();
+    p_info->ulFreePrivateMemory = low ? 512 : (1u << 20);
+    p_info->ulFreePublicMemory = low ? 512 : (1u << 20);
     return CKR_OK;
 }
 
 struct MechanismEntry {
-    CK_MECHANISM_TYPE type;
-    CK_ULONG minKeySize;
-    CK_ULONG maxKeySize;
-    CK_FLAGS flags;
+    CK_MECHANISM_TYPE type_;
+    CK_ULONG min_key_size_;
+    CK_ULONG max_key_size_;
+    CK_FLAGS flags_;
 };
 
-const std::vector<MechanismEntry>& mechanismTable() {
-    static const std::vector<MechanismEntry> table = {
+const std::vector<MechanismEntry>& MechanismTable() {
+    static const std::vector<MechanismEntry> kTable = {
         {CKM_RSA_PKCS_KEY_PAIR_GEN, 2048, 4096, CKF_GENERATE_KEY_PAIR},
         {CKM_RSA_PKCS, 2048, 4096, CKF_ENCRYPT | CKF_DECRYPT | CKF_SIGN | CKF_VERIFY | CKF_WRAP | CKF_UNWRAP},
         {CKM_SHA256_RSA_PKCS, 2048, 4096, CKF_SIGN | CKF_VERIFY},
@@ -524,77 +524,77 @@ const std::vector<MechanismEntry>& mechanismTable() {
         {CKM_PKCS5_PBKD2, 0, 0, CKF_GENERATE},
         {CKM_SP800_108_COUNTER_KDF, 0, 0, CKF_DERIVE},
     };
-    return table;
+    return kTable;
 }
 
-CK_RV Mock_GetMechanismList(CK_SLOT_ID, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount) {
-    const auto& table = mechanismTable();
-    if (pMechanismList == nullptr) {
-        *pulCount = static_cast<CK_ULONG>(table.size());
+CK_RV MockGetMechanismList(CK_SLOT_ID, CK_MECHANISM_TYPE_PTR p_mechanism_list, CK_ULONG_PTR pul_count) {
+    const auto& table = MechanismTable();
+    if (p_mechanism_list == nullptr) {
+        *pul_count = static_cast<CK_ULONG>(table.size());
         return CKR_OK;
     }
-    for (std::size_t i = 0; i < table.size(); ++i) pMechanismList[i] = table[i].type;
-    *pulCount = static_cast<CK_ULONG>(table.size());
+    for (std::size_t i = 0; i < table.size(); ++i) p_mechanism_list[i] = table[i].type_;
+    *pul_count = static_cast<CK_ULONG>(table.size());
     return CKR_OK;
 }
 
-CK_RV Mock_GetMechanismInfo(CK_SLOT_ID, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo) {
-    for (const auto& entry : mechanismTable()) {
-        if (entry.type == type) {
-            pInfo->ulMinKeySize = entry.minKeySize;
-            pInfo->ulMaxKeySize = entry.maxKeySize;
-            pInfo->flags = entry.flags;
+CK_RV MockGetMechanismInfo(CK_SLOT_ID, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR p_info) {
+    for (const auto& entry : MechanismTable()) {
+        if (entry.type_ == type) {
+            p_info->ulMinKeySize = entry.min_key_size_;
+            p_info->ulMaxKeySize = entry.max_key_size_;
+            p_info->flags = entry.flags_;
             return CKR_OK;
         }
     }
     return CKR_GENERAL_ERROR;
 }
 
-CK_FUNCTION_LIST buildFunctionList() {
+CK_FUNCTION_LIST BuildFunctionList() {
     CK_FUNCTION_LIST list{};
-    list.C_Initialize = Mock_Initialize;
-    list.C_OpenSession = Mock_OpenSession;
-    list.C_CloseSession = Mock_CloseSession;
-    list.C_Login = Mock_Login;
-    list.C_GenerateRandom = Mock_GenerateRandom;
-    list.C_GenerateKey = Mock_GenerateKey;
-    list.C_GenerateKeyPair = Mock_GenerateKeyPair;
-    list.C_DeriveKey = Mock_DeriveKey;
-    list.C_WrapKey = Mock_WrapKey;
-    list.C_UnwrapKey = Mock_UnwrapKey;
-    list.C_SignInit = Mock_SignInit;
-    list.C_Sign = Mock_Sign;
-    list.C_VerifyInit = Mock_VerifyInit;
-    list.C_Verify = Mock_Verify;
-    list.C_EncryptInit = Mock_EncryptInit;
-    list.C_Encrypt = Mock_Encrypt;
-    list.C_DecryptInit = Mock_DecryptInit;
-    list.C_Decrypt = Mock_Decrypt;
-    list.C_DigestInit = Mock_DigestInit;
-    list.C_Digest = Mock_Digest;
-    list.C_GetAttributeValue = Mock_GetAttributeValue;
-    list.C_SetAttributeValue = Mock_SetAttributeValue;
-    list.C_FindObjectsInit = Mock_FindObjectsInit;
-    list.C_FindObjects = Mock_FindObjects;
-    list.C_FindObjectsFinal = Mock_FindObjectsFinal;
-    list.C_DestroyObject = Mock_DestroyObject;
-    list.C_GetSlotList = Mock_GetSlotList;
-    list.C_GetSlotInfo = Mock_GetSlotInfo;
-    list.C_GetTokenInfo = Mock_GetTokenInfo;
-    list.C_GetMechanismList = Mock_GetMechanismList;
-    list.C_GetMechanismInfo = Mock_GetMechanismInfo;
+    list.C_Initialize = MockInitialize;
+    list.C_OpenSession = MockOpenSession;
+    list.C_CloseSession = MockCloseSession;
+    list.C_Login = MockLogin;
+    list.C_GenerateRandom = MockGenerateRandom;
+    list.C_GenerateKey = MockGenerateKey;
+    list.C_GenerateKeyPair = MockGenerateKeyPair;
+    list.C_DeriveKey = MockDeriveKey;
+    list.C_WrapKey = MockWrapKey;
+    list.C_UnwrapKey = MockUnwrapKey;
+    list.C_SignInit = MockSignInit;
+    list.C_Sign = MockSign;
+    list.C_VerifyInit = MockVerifyInit;
+    list.C_Verify = MockVerify;
+    list.C_EncryptInit = MockEncryptInit;
+    list.C_Encrypt = MockEncrypt;
+    list.C_DecryptInit = MockDecryptInit;
+    list.C_Decrypt = MockDecrypt;
+    list.C_DigestInit = MockDigestInit;
+    list.C_Digest = MockDigest;
+    list.C_GetAttributeValue = MockGetAttributeValue;
+    list.C_SetAttributeValue = MockSetAttributeValue;
+    list.C_FindObjectsInit = MockFindObjectsInit;
+    list.C_FindObjects = MockFindObjects;
+    list.C_FindObjectsFinal = MockFindObjectsFinal;
+    list.C_DestroyObject = MockDestroyObject;
+    list.C_GetSlotList = MockGetSlotList;
+    list.C_GetSlotInfo = MockGetSlotInfo;
+    list.C_GetTokenInfo = MockGetTokenInfo;
+    list.C_GetMechanismList = MockGetMechanismList;
+    list.C_GetMechanismInfo = MockGetMechanismInfo;
     return list;
 }
 
 }  // namespace
 
-CK_FUNCTION_LIST_PTR getFunctionList() {
-    static CK_FUNCTION_LIST list = buildFunctionList();
+CK_FUNCTION_LIST_PTR GetFunctionList() {
+    static CK_FUNCTION_LIST list = BuildFunctionList();
     return &list;
 }
 
-void reset() { Token::instance().reset(); }
+void Reset() { Token::Instance().Reset(); }
 
-void simulateLowMemory(bool enabled) { Token::instance().setLowMemory(enabled); }
+void SimulateLowMemory(bool enabled) { Token::Instance().SetLowMemory(enabled); }
 
 }  // namespace pkcs11cpp::mock

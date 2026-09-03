@@ -18,40 +18,40 @@ namespace pkcs11cpp {
 class MechanismManager {
 public:
     struct MechanismInfo {
-        CK_MECHANISM_TYPE type;
-        CK_MECHANISM_INFO info;
-        std::string name;
-        std::set<std::string> capabilities;  // "encrypt", "sign", "derive", ...
+        CK_MECHANISM_TYPE type_;
+        CK_MECHANISM_INFO info_;
+        std::string name_;
+        std::set<std::string> capabilities_;  // "encrypt", "sign", "derive", ...
     };
 
-    void discoverMechanisms(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slotId);
+    void DiscoverMechanisms(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slot_id);
 
-    std::optional<CK_MECHANISM_TYPE> selectBestMechanism(CK_SLOT_ID slotId, const std::string& operation,
-                                                          CK_KEY_TYPE keyType, CK_ULONG keySize = 0) const;
+    std::optional<CK_MECHANISM_TYPE> SelectBestMechanism(CK_SLOT_ID slot_id, const std::string& operation,
+                                                          CK_KEY_TYPE key_type, CK_ULONG key_size = 0) const;
 
-    CK_MECHANISM createOptimizedMechanism(CK_MECHANISM_TYPE mechanismType,
+    CK_MECHANISM CreateOptimizedMechanism(CK_MECHANISM_TYPE mechanism_type,
                                            const std::map<std::string, std::any>& parameters = {}) const;
 
-    const std::vector<MechanismInfo>* mechanismsForSlot(CK_SLOT_ID slotId) const;
+    const std::vector<MechanismInfo>* MechanismsForSlot(CK_SLOT_ID slot_id) const;
 
 private:
-    std::string getMechanismName(CK_MECHANISM_TYPE type) const;
-    std::set<std::string> analyzeMechanismCapabilities(const CK_MECHANISM_INFO& info) const;
-    bool isCompatibleWithKeyType(CK_MECHANISM_TYPE mechanism, CK_KEY_TYPE keyType) const;
-    const MechanismInfo* selectPreferredMechanism(const std::string& operation, CK_KEY_TYPE keyType,
+    std::string GetMechanismName(CK_MECHANISM_TYPE type) const;
+    std::set<std::string> AnalyzeMechanismCapabilities(const CK_MECHANISM_INFO& info) const;
+    bool IsCompatibleWithKeyType(CK_MECHANISM_TYPE mechanism, CK_KEY_TYPE key_type) const;
+    const MechanismInfo* SelectPreferredMechanism(const std::string& operation, CK_KEY_TYPE key_type,
                                                    const std::vector<const MechanismInfo*>& candidates) const;
 
-    std::unordered_map<CK_SLOT_ID, std::vector<MechanismInfo>> slotMechanisms_;
+    std::unordered_map<CK_SLOT_ID, std::vector<MechanismInfo>> slot_mechanisms_;
 
     // Static buffers for the mechanism-parameter structs returned by
-    // createOptimizedMechanism -- CK_MECHANISM only stores a pointer, so
+    // CreateOptimizedMechanism -- CK_MECHANISM only stores a pointer, so
     // whatever it points to must outlive the C_*Init call that consumes
     // it. Kept as instance state (rather than the original code's
     // function-local `static`) so concurrent calls on different
     // MechanismManager instances do not stomp on each other.
-    mutable CK_RSA_PKCS_OAEP_PARAMS oaepParamsStorage_{};
-    mutable CK_GCM_PARAMS gcmParamsStorage_{};
-    mutable CK_ECDH1_DERIVE_PARAMS ecdhParamsStorage_{};
+    mutable CK_RSA_PKCS_OAEP_PARAMS oaep_params_storage_{};
+    mutable CK_GCM_PARAMS gcm_params_storage_{};
+    mutable CK_ECDH1_DERIVE_PARAMS ecdh_params_storage_{};
 };
 
 }  // namespace pkcs11cpp

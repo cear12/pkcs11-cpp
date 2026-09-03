@@ -7,59 +7,59 @@
 
 namespace pkcs11cpp {
 
-void MechanismManager::discoverMechanisms(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slotId) {
-    CK_ULONG mechanismCount = 0;
-    CK_RV rv = functions->C_GetMechanismList(slotId, nullptr, &mechanismCount);
+void MechanismManager::DiscoverMechanisms(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slot_id) {
+    CK_ULONG mechanism_count = 0;
+    CK_RV rv = functions->C_GetMechanismList(slot_id, nullptr, &mechanism_count);
     if (rv != CKR_OK) {
         throw std::runtime_error("C_GetMechanismList (sizing) failed: " + std::to_string(rv));
     }
 
-    std::vector<CK_MECHANISM_TYPE> mechanisms(mechanismCount);
-    rv = functions->C_GetMechanismList(slotId, mechanisms.data(), &mechanismCount);
+    std::vector<CK_MECHANISM_TYPE> mechanisms(mechanism_count);
+    rv = functions->C_GetMechanismList(slot_id, mechanisms.data(), &mechanism_count);
     if (rv != CKR_OK) {
         throw std::runtime_error("C_GetMechanismList failed: " + std::to_string(rv));
     }
 
-    std::vector<MechanismInfo> mechanismInfos;
-    mechanismInfos.reserve(mechanisms.size());
-    for (auto mechType : mechanisms) {
-        MechanismInfo mechInfo;
-        mechInfo.type = mechType;
+    std::vector<MechanismInfo> mechanism_infos;
+    mechanism_infos.reserve(mechanisms.size());
+    for (auto mech_type : mechanisms) {
+        MechanismInfo mech_info;
+        mech_info.type_ = mech_type;
 
-        rv = functions->C_GetMechanismInfo(slotId, mechType, &mechInfo.info);
+        rv = functions->C_GetMechanismInfo(slot_id, mech_type, &mech_info.info_);
         if (rv == CKR_OK) {
-            mechInfo.name = getMechanismName(mechType);
-            mechInfo.capabilities = analyzeMechanismCapabilities(mechInfo.info);
-            mechanismInfos.push_back(std::move(mechInfo));
+            mech_info.name_ = GetMechanismName(mech_type);
+            mech_info.capabilities_ = AnalyzeMechanismCapabilities(mech_info.info_);
+            mechanism_infos.push_back(std::move(mech_info));
         } else {
-            log::warn("C_GetMechanismInfo failed for mechanism " + std::to_string(mechType) + ": rv=" +
+            log::Warn("C_GetMechanismInfo failed for mechanism " + std::to_string(mech_type) + ": rv=" +
                       std::to_string(rv));
         }
     }
 
-    slotMechanisms_[slotId] = std::move(mechanismInfos);
+    slot_mechanisms_[slot_id] = std::move(mechanism_infos);
 }
 
-const std::vector<MechanismManager::MechanismInfo>* MechanismManager::mechanismsForSlot(CK_SLOT_ID slotId) const {
-    auto it = slotMechanisms_.find(slotId);
-    return it == slotMechanisms_.end() ? nullptr : &it->second;
+const std::vector<MechanismManager::MechanismInfo>* MechanismManager::MechanismsForSlot(CK_SLOT_ID slot_id) const {
+    auto it = slot_mechanisms_.find(slot_id);
+    return it == slot_mechanisms_.end() ? nullptr : &it->second;
 }
 
-std::optional<CK_MECHANISM_TYPE> MechanismManager::selectBestMechanism(CK_SLOT_ID slotId,
+std::optional<CK_MECHANISM_TYPE> MechanismManager::SelectBestMechanism(CK_SLOT_ID slot_id,
                                                                         const std::string& operation,
-                                                                        CK_KEY_TYPE keyType, CK_ULONG keySize) const {
-    auto it = slotMechanisms_.find(slotId);
-    if (it == slotMechanisms_.end()) {
+                                                                        CK_KEY_TYPE key_type, CK_ULONG key_size) const {
+    auto it = slot_mechanisms_.find(slot_id);
+    if (it == slot_mechanisms_.end()) {
         return std::nullopt;
     }
 
     std::vector<const MechanismInfo*> candidates;
     for (const auto& mech : it->second) {
-        if (mech.capabilities.count(operation) == 0 || !isCompatibleWithKeyType(mech.type, keyType)) {
+        if (mech.capabilities_.count(operation) == 0 || !IsCompatibleWithKeyType(mech.type_, key_type)) {
             continue;
         }
-        if (keySize > 0 && mech.info.ulMinKeySize > 0 && mech.info.ulMaxKeySize > 0) {
-            if (keySize < mech.info.ulMinKeySize || keySize > mech.info.ulMaxKeySize) {
+        if (key_size > 0 && mech.info_.ulMinKeySize > 0 && mech.info_.ulMaxKeySize > 0) {
+            if (key_size < mech.info_.ulMinKeySize || key_size > mech.info_.ulMaxKeySize) {
                 continue;
             }
         }
@@ -70,62 +70,62 @@ std::optional<CK_MECHANISM_TYPE> MechanismManager::selectBestMechanism(CK_SLOT_I
         return std::nullopt;
     }
 
-    const MechanismInfo* best = selectPreferredMechanism(operation, keyType, candidates);
-    return best != nullptr ? std::make_optional(best->type) : std::nullopt;
+    const MechanismInfo* best = SelectPreferredMechanism(operation, key_type, candidates);
+    return best != nullptr ? std::make_optional(best->type_) : std::nullopt;
 }
 
-CK_MECHANISM MechanismManager::createOptimizedMechanism(CK_MECHANISM_TYPE mechanismType,
+CK_MECHANISM MechanismManager::CreateOptimizedMechanism(CK_MECHANISM_TYPE mechanism_type,
                                                           const std::map<std::string, std::any>& parameters) const {
-    CK_MECHANISM mechanism = {mechanismType, nullptr, 0};
+    CK_MECHANISM mechanism = {mechanism_type, nullptr, 0};
 
-    switch (mechanismType) {
+    switch (mechanism_type) {
         case CKM_RSA_PKCS_OAEP: {
-            oaepParamsStorage_.hashAlg = CKM_SHA256;
-            oaepParamsStorage_.mgf = CKG_MGF1_SHA256;
-            oaepParamsStorage_.source = CKZ_DATA_SPECIFIED;
-            oaepParamsStorage_.pSourceData = nullptr;
-            oaepParamsStorage_.ulSourceDataLen = 0;
+            oaep_params_storage_.hashAlg = CKM_SHA256;
+            oaep_params_storage_.mgf = CKG_MGF1_SHA256;
+            oaep_params_storage_.source = CKZ_DATA_SPECIFIED;
+            oaep_params_storage_.pSourceData = nullptr;
+            oaep_params_storage_.ulSourceDataLen = 0;
 
             if (auto it = parameters.find("hashAlg"); it != parameters.end()) {
-                oaepParamsStorage_.hashAlg = std::any_cast<CK_MECHANISM_TYPE>(it->second);
+                oaep_params_storage_.hashAlg = std::any_cast<CK_MECHANISM_TYPE>(it->second);
             }
 
-            mechanism.pParameter = &oaepParamsStorage_;
-            mechanism.ulParameterLen = sizeof(oaepParamsStorage_);
+            mechanism.pParameter = &oaep_params_storage_;
+            mechanism.ulParameterLen = sizeof(oaep_params_storage_);
             break;
         }
         case CKM_AES_GCM: {
-            gcmParamsStorage_.ulIvLen = 12;
-            gcmParamsStorage_.ulAADLen = 0;
-            gcmParamsStorage_.ulTagBits = 128;
+            gcm_params_storage_.ulIvLen = 12;
+            gcm_params_storage_.ulAADLen = 0;
+            gcm_params_storage_.ulTagBits = 128;
 
             if (auto it = parameters.find("iv"); it != parameters.end()) {
-                static thread_local std::vector<CK_BYTE> ivStorage;
-                ivStorage = std::any_cast<std::vector<CK_BYTE>>(it->second);
-                gcmParamsStorage_.pIv = ivStorage.data();
-                gcmParamsStorage_.ulIvLen = static_cast<CK_ULONG>(ivStorage.size());
+                static thread_local std::vector<CK_BYTE> iv_storage;
+                iv_storage = std::any_cast<std::vector<CK_BYTE>>(it->second);
+                gcm_params_storage_.pIv = iv_storage.data();
+                gcm_params_storage_.ulIvLen = static_cast<CK_ULONG>(iv_storage.size());
             }
 
-            mechanism.pParameter = &gcmParamsStorage_;
-            mechanism.ulParameterLen = sizeof(gcmParamsStorage_);
+            mechanism.pParameter = &gcm_params_storage_;
+            mechanism.ulParameterLen = sizeof(gcm_params_storage_);
             break;
         }
         case CKM_ECDH1_DERIVE: {
-            ecdhParamsStorage_.kdf = CKD_NULL;
-            ecdhParamsStorage_.ulSharedDataLen = 0;
-            ecdhParamsStorage_.pSharedData = nullptr;
-            ecdhParamsStorage_.pPublicData = nullptr;
-            ecdhParamsStorage_.ulPublicDataLen = 0;
+            ecdh_params_storage_.kdf = CKD_NULL;
+            ecdh_params_storage_.ulSharedDataLen = 0;
+            ecdh_params_storage_.pSharedData = nullptr;
+            ecdh_params_storage_.pPublicData = nullptr;
+            ecdh_params_storage_.ulPublicDataLen = 0;
 
             if (auto it = parameters.find("publicKey"); it != parameters.end()) {
-                static thread_local std::vector<CK_BYTE> pubStorage;
-                pubStorage = std::any_cast<std::vector<CK_BYTE>>(it->second);
-                ecdhParamsStorage_.pPublicData = pubStorage.data();
-                ecdhParamsStorage_.ulPublicDataLen = static_cast<CK_ULONG>(pubStorage.size());
+                static thread_local std::vector<CK_BYTE> pub_storage;
+                pub_storage = std::any_cast<std::vector<CK_BYTE>>(it->second);
+                ecdh_params_storage_.pPublicData = pub_storage.data();
+                ecdh_params_storage_.ulPublicDataLen = static_cast<CK_ULONG>(pub_storage.size());
             }
 
-            mechanism.pParameter = &ecdhParamsStorage_;
-            mechanism.ulParameterLen = sizeof(ecdhParamsStorage_);
+            mechanism.pParameter = &ecdh_params_storage_;
+            mechanism.ulParameterLen = sizeof(ecdh_params_storage_);
             break;
         }
         default:
@@ -135,8 +135,8 @@ CK_MECHANISM MechanismManager::createOptimizedMechanism(CK_MECHANISM_TYPE mechan
     return mechanism;
 }
 
-std::string MechanismManager::getMechanismName(CK_MECHANISM_TYPE type) const {
-    static const std::unordered_map<CK_MECHANISM_TYPE, std::string> nameMap = {
+std::string MechanismManager::GetMechanismName(CK_MECHANISM_TYPE type) const {
+    static const std::unordered_map<CK_MECHANISM_TYPE, std::string> kNameMap = {
         {CKM_RSA_PKCS, "RSA_PKCS"},
         {CKM_RSA_PKCS_OAEP, "RSA_PKCS_OAEP"},
         {CKM_RSA_PSS, "RSA_PSS"},
@@ -155,11 +155,11 @@ std::string MechanismManager::getMechanismName(CK_MECHANISM_TYPE type) const {
         {CKM_PKCS5_PBKD2, "PKCS5_PBKD2"},
         {CKM_SP800_108_COUNTER_KDF, "SP800_108_COUNTER_KDF"},
     };
-    auto it = nameMap.find(type);
-    return it != nameMap.end() ? it->second : "UNKNOWN_" + std::to_string(type);
+    auto it = kNameMap.find(type);
+    return it != kNameMap.end() ? it->second : "UNKNOWN_" + std::to_string(type);
 }
 
-std::set<std::string> MechanismManager::analyzeMechanismCapabilities(const CK_MECHANISM_INFO& info) const {
+std::set<std::string> MechanismManager::AnalyzeMechanismCapabilities(const CK_MECHANISM_INFO& info) const {
     std::set<std::string> capabilities;
     if (info.flags & CKF_ENCRYPT) capabilities.insert("encrypt");
     if (info.flags & CKF_DECRYPT) capabilities.insert("decrypt");
@@ -173,8 +173,8 @@ std::set<std::string> MechanismManager::analyzeMechanismCapabilities(const CK_ME
     return capabilities;
 }
 
-bool MechanismManager::isCompatibleWithKeyType(CK_MECHANISM_TYPE mechanism, CK_KEY_TYPE keyType) const {
-    switch (keyType) {
+bool MechanismManager::IsCompatibleWithKeyType(CK_MECHANISM_TYPE mechanism, CK_KEY_TYPE key_type) const {
+    switch (key_type) {
         case CKK_RSA:
             return mechanism == CKM_RSA_PKCS || mechanism == CKM_RSA_PKCS_OAEP || mechanism == CKM_RSA_PSS ||
                    mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN || mechanism == CKM_SHA256_RSA_PKCS;
@@ -190,7 +190,7 @@ bool MechanismManager::isCompatibleWithKeyType(CK_MECHANISM_TYPE mechanism, CK_K
     }
 }
 
-const MechanismManager::MechanismInfo* MechanismManager::selectPreferredMechanism(
+const MechanismManager::MechanismInfo* MechanismManager::SelectPreferredMechanism(
     const std::string& /*operation*/, CK_KEY_TYPE /*keyType*/,
     const std::vector<const MechanismInfo*>& candidates) const {
     if (candidates.empty()) return nullptr;
@@ -201,9 +201,9 @@ const MechanismManager::MechanismInfo* MechanismManager::selectPreferredMechanis
     // discovery order for determinism.
     const MechanismInfo* best = candidates.front();
     for (const auto* candidate : candidates) {
-        CK_ULONG bestRange = best->info.ulMaxKeySize - best->info.ulMinKeySize;
-        CK_ULONG candidateRange = candidate->info.ulMaxKeySize - candidate->info.ulMinKeySize;
-        if (candidateRange > bestRange) {
+        CK_ULONG best_range = best->info_.ulMaxKeySize - best->info_.ulMinKeySize;
+        CK_ULONG candidate_range = candidate->info_.ulMaxKeySize - candidate->info_.ulMinKeySize;
+        if (candidate_range > best_range) {
             best = candidate;
         }
     }

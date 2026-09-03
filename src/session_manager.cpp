@@ -6,34 +6,34 @@
 
 namespace pkcs11cpp {
 
-SessionManager::SessionManager(const std::string& libraryPath, CK_SLOT_ID slot, std::string userPin)
-    : slotId_(slot), userPin_(std::move(userPin)) {
-    libraryHandle_ = dlopen(libraryPath.c_str(), RTLD_NOW);
-    if (libraryHandle_ == nullptr) {
-        throw std::runtime_error("Failed to load PKCS#11 library: " + libraryPath);
+SessionManager::SessionManager(const std::string& library_path, CK_SLOT_ID slot, std::string user_pin)
+    : slot_id_(slot), user_pin_(std::move(user_pin)) {
+    library_handle_ = dlopen(library_path.c_str(), RTLD_NOW);
+    if (library_handle_ == nullptr) {
+        throw std::runtime_error("Failed to load PKCS#11 library: " + library_path);
     }
 
-    auto getFunctionList = reinterpret_cast<CK_C_GetFunctionList>(dlsym(libraryHandle_, "C_GetFunctionList"));
-    if (getFunctionList == nullptr) {
-        dlclose(libraryHandle_);
-        throw std::runtime_error("PKCS#11 library is missing C_GetFunctionList: " + libraryPath);
+    auto get_function_list = reinterpret_cast<CK_C_GetFunctionList>(dlsym(library_handle_, "C_GetFunctionList"));
+    if (get_function_list == nullptr) {
+        dlclose(library_handle_);
+        throw std::runtime_error("PKCS#11 library is missing C_GetFunctionList: " + library_path);
     }
 
-    CK_RV rv = getFunctionList(&functions_);
+    CK_RV rv = get_function_list(&functions_);
     if (rv != CKR_OK || functions_ == nullptr) {
-        dlclose(libraryHandle_);
+        dlclose(library_handle_);
         throw std::runtime_error("C_GetFunctionList failed, rv=" + std::to_string(rv));
     }
 
     rv = functions_->C_Initialize(nullptr);
     if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
-        dlclose(libraryHandle_);
+        dlclose(library_handle_);
         throw std::runtime_error("C_Initialize failed, rv=" + std::to_string(rv));
     }
 }
 
-SessionManager::SessionManager(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slot, std::string userPin)
-    : functions_(functions), slotId_(slot), userPin_(std::move(userPin)) {
+SessionManager::SessionManager(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slot, std::string user_pin)
+    : functions_(functions), slot_id_(slot), user_pin_(std::move(user_pin)) {
     if (functions_ == nullptr) {
         throw std::invalid_argument("SessionManager: functions must not be null");
     }
@@ -45,47 +45,47 @@ SessionManager::SessionManager(CK_FUNCTION_LIST_PTR functions, CK_SLOT_ID slot, 
 
 SessionManager::~SessionManager() {
     if (functions_ != nullptr) {
-        for (const auto& [threadId, session] : threadSessions_) {
+        for (const auto& [threadId, session] : thread_sessions_) {
             functions_->C_CloseSession(session);
         }
     }
-    if (libraryHandle_ != nullptr) {
-        dlclose(libraryHandle_);
+    if (library_handle_ != nullptr) {
+        dlclose(library_handle_);
     }
 }
 
-CK_SESSION_HANDLE SessionManager::getOrOpenSession() {
-    std::lock_guard<std::mutex> lock(sessionMutex_);
+CK_SESSION_HANDLE SessionManager::GetOrOpenSession() {
+    std::lock_guard<std::mutex> lock(session_mutex_);
 
-    auto threadId = std::this_thread::get_id();
-    auto it = threadSessions_.find(threadId);
-    if (it != threadSessions_.end()) {
+    auto thread_id = std::this_thread::get_id();
+    auto it = thread_sessions_.find(thread_id);
+    if (it != thread_sessions_.end()) {
         return it->second;
     }
 
     CK_SESSION_HANDLE session;
     CK_FLAGS flags = CKF_SERIAL_SESSION | CKF_RW_SESSION;
-    CK_RV rv = functions_->C_OpenSession(slotId_, flags, nullptr, nullptr, &session);
+    CK_RV rv = functions_->C_OpenSession(slot_id_, flags, nullptr, nullptr, &session);
     if (rv != CKR_OK) {
         throw std::runtime_error("C_OpenSession failed, rv=" + std::to_string(rv));
     }
 
-    if (!userPin_.empty()) {
+    if (!user_pin_.empty()) {
         rv = functions_->C_Login(session, CKU_USER,
-                                  reinterpret_cast<CK_UTF8CHAR_PTR>(const_cast<char*>(userPin_.c_str())),
-                                  static_cast<CK_ULONG>(userPin_.length()));
+                                  reinterpret_cast<CK_UTF8CHAR_PTR>(const_cast<char*>(user_pin_.c_str())),
+                                  static_cast<CK_ULONG>(user_pin_.length()));
         if (rv != CKR_OK && rv != CKR_USER_ALREADY_LOGGED_IN) {
             functions_->C_CloseSession(session);
             throw std::runtime_error("C_Login failed, rv=" + std::to_string(rv));
         }
     }
 
-    threadSessions_[threadId] = session;
+    thread_sessions_[thread_id] = session;
     return session;
 }
 
-SessionManager::SessionGuard SessionManager::createSessionGuard() {
-    return SessionGuard(this, getOrOpenSession());
+SessionManager::SessionGuard SessionManager::CreateSessionGuard() {
+    return SessionGuard(this, GetOrOpenSession());
 }
 
 }  // namespace pkcs11cpp

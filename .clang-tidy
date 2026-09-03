@@ -1,0 +1,107 @@
+# Google C++ naming convention, применяется через `readability-identifier-naming`
+# (единственный включённый чек — это НЕ полный google-* lint-профиль, только
+# переименование идентификаторов; синтаксис/скобки/отступы делает .clang-format).
+# Требует compile_commands.json (см. qt-creator-vs-clang-format.md / README.md).
+Checks: '-*,readability-identifier-naming'
+CheckOptions:
+  # Типы
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.UnionCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+
+  # Функции и методы
+  - key: readability-identifier-naming.FunctionCase
+    value: CamelCase
+  - key: readability-identifier-naming.MethodCase
+    value: CamelCase
+
+  # Переменные и параметры
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalVariablePrefix
+    value: 'g_'
+
+  # Поля класса — единый стиль для всех уровней доступа (Google: trailing '_')
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberSuffix
+    value: '_'
+
+  # Пространства имён
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+
+  # Константы (enum-значения, constexpr, const, static const/constexpr) —
+  # везде kCamelCase, независимо от того, к какой именно под-категории
+  # clang-tidy отнесёт конкретный случай.
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.ScopedEnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.ScopedEnumConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.ConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.ClassConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.StaticConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.StaticConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.LocalConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.LocalConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.ConstexprVariableCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstexprVariablePrefix
+    value: 'k'
+  - key: readability-identifier-naming.ClassConstexprCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassConstexprPrefix
+    value: 'k'
+  - key: readability-identifier-naming.StaticConstexprVariableCase
+    value: CamelCase
+  - key: readability-identifier-naming.StaticConstexprVariablePrefix
+    value: 'k'
+  - key: readability-identifier-naming.GlobalConstexprVariableCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalConstexprVariablePrefix
+    value: 'k'
+  - key: readability-identifier-naming.LocalConstexprVariableCase
+    value: CamelCase
+  - key: readability-identifier-naming.LocalConstexprVariablePrefix
+    value: 'k'
+
+  # Шаблонные параметры
+  - key: readability-identifier-naming.TypeTemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.ValueTemplateParameterCase
+    value: CamelCase
+
+  # main()-подобные функции не переименовывать (main, wmain и т.п.)
+  - key: readability-identifier-naming.IgnoreMainLikeFunctions
+    value: 'true'

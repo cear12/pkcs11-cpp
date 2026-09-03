@@ -76,6 +76,19 @@ cmake --build build
 
 Useful options: `-DPKCS11CPP_BUILD_TESTS=OFF`, `-DPKCS11CPP_BUILD_EXAMPLES=OFF`.
 
+## Building in Visual Studio
+
+With two executable targets (`pkcs11cpp_demo`, `pkcs11cpp_tests`) and no
+CMakePresets.json, Visual Studio's Open Folder / CMake integration has no
+default startup item configured. Pressing **Debug/Run** (not Build) then
+pops a blocking "Select Startup Item" dialog -- easy to mistake for the
+project failing to build, even though **Build > Build All**
+(Ctrl+Shift+B) succeeds regardless of what's selected there (confirmed
+here: `.ninja_log` already shows `pkcs11cpp_demo` compiling cleanly).
+`CMakePresets.json` sets `CMAKE_VS_STARTUP_PROJECT` to `pkcs11cpp_demo`
+so Debug/Run works immediately too; switch to `pkcs11cpp_tests` from the
+dropdown next to the Run button to debug the test suite instead.
+
 ## Running the demo
 
 `examples/demo.cpp` walks through the whole library against the mock

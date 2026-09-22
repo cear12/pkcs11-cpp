@@ -1,37 +1,79 @@
 #include "pkcs11cpp/session_manager.h"
 
-#include <dlfcn.h>
-
 #include <stdexcept>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
 namespace pkcs11cpp {
+
+namespace {
+
+// Thin portability layer over the platform's dynamic loader: dlopen/dlsym
+// on Linux and macOS, LoadLibrary/GetProcAddress on Windows. Everything
+// else in this file is platform-neutral.
+void* OpenLibrary(const std::string& path) {
+#ifdef _WIN32
+  return reinterpret_cast<void*>(::LoadLibraryA(path.c_str()));
+#else
+  return ::dlopen(path.c_str(), RTLD_NOW);
+#endif
+}
+
+void* FindSymbol(void* library, const char* name) {
+#ifdef _WIN32
+  return reinterpret_cast<void*>(
+      ::GetProcAddress(static_cast<HMODULE>(library), name));
+#else
+  return ::dlsym(library, name);
+#endif
+}
+
+void CloseLibrary(void* library) {
+#ifdef _WIN32
+  ::FreeLibrary(static_cast<HMODULE>(library));
+#else
+  ::dlclose(library);
+#endif
+}
+
+}  // namespace
 
 SessionManager::SessionManager(const std::string& library_path, CK_SLOT_ID slot,
                                std::string user_pin)
     : slot_id_(slot), user_pin_(std::move(user_pin)) {
-  library_handle_ = dlopen(library_path.c_str(), RTLD_NOW);
+  library_handle_ = OpenLibrary(library_path);
   if (library_handle_ == nullptr) {
     throw std::runtime_error("Failed to load PKCS#11 library: " + library_path);
   }
 
   auto get_function_list = reinterpret_cast<CK_C_GetFunctionList>(
-      dlsym(library_handle_, "C_GetFunctionList"));
+      FindSymbol(library_handle_, "C_GetFunctionList"));
   if (get_function_list == nullptr) {
-    dlclose(library_handle_);
+    CloseLibrary(library_handle_);
     throw std::runtime_error("PKCS#11 library is missing C_GetFunctionList: " +
                              library_path);
   }
 
   CK_RV rv = get_function_list(&functions_);
   if (rv != CKR_OK || functions_ == nullptr) {
-    dlclose(library_handle_);
+    CloseLibrary(library_handle_);
     throw std::runtime_error("C_GetFunctionList failed, rv=" +
                              std::to_string(rv));
   }
 
   rv = functions_->C_Initialize(nullptr);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
-    dlclose(library_handle_);
+    CloseLibrary(library_handle_);
     throw std::runtime_error("C_Initialize failed, rv=" + std::to_string(rv));
   }
 }
@@ -55,7 +97,7 @@ SessionManager::~SessionManager() {
     }
   }
   if (library_handle_ != nullptr) {
-    dlclose(library_handle_);
+    CloseLibrary(library_handle_);
   }
 }
 

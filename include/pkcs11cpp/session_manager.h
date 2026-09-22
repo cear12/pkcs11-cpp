@@ -19,9 +19,9 @@ namespace pkcs11cpp {
 // per calling thread the first time it asks for one.
 class SessionManager {
  public:
-  // Loads a real PKCS#11 module from disk (a vendor's .so/.dll) via
-  // dlopen/C_GetFunctionList. Linux/macOS only as written; on Windows,
-  // swap dlopen/dlsym for LoadLibrary/GetProcAddress.
+  // Loads a real PKCS#11 module from disk (a vendor's .so/.dylib/.dll) and
+  // resolves C_GetFunctionList: dlopen/dlsym on Linux and macOS,
+  // LoadLibrary/GetProcAddress on Windows.
   SessionManager(const std::string& library_path, CK_SLOT_ID slot,
                  std::string user_pin = "");
 

@@ -263,7 +263,11 @@ std::string AttributeManager::CurrentTimestampUtc() {
   auto now = std::chrono::system_clock::now();
   auto time = std::chrono::system_clock::to_time_t(now);
   std::tm tm_utc{};
+#if defined(_WIN32)
+  gmtime_s(&tm_utc, &time);
+#else
   gmtime_r(&time, &tm_utc);
+#endif
   std::stringstream ss;
   ss << std::put_time(&tm_utc, "%Y-%m-%dT%H:%M:%SZ");
   return ss.str();
